@@ -33,6 +33,8 @@ final class AppState {
             return "pause.circle"
         case .missingPermissions:
             return "exclamationmark.triangle"
+        case .tapDisabled:
+            return "bolt.slash"
         case .failed:
             return "xmark.octagon"
         case .starting, .unavailable:

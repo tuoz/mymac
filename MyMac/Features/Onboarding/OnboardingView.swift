@@ -14,14 +14,14 @@ struct OnboardingView: View {
                 .font(.largeTitle)
                 .bold()
 
-            Text("这是一个面向 macOS 的后台快捷键工具。第一版会提供菜单栏入口、权限引导、自启动开关，以及键盘映射服务的工程骨架。")
+            Text("这是一个面向 macOS 的后台快捷键工具。现在它会尝试把 Fn + H/J/K/L 映射成方向键，并通过菜单栏和设置页管理运行状态。")
                 .foregroundStyle(.secondary)
 
             GroupBox("开始前需要知道") {
                 VStack(alignment: .leading, spacing: 8) {
-                    Text("1. 实际键盘监听功能后续会依赖系统权限。")
+                    Text("1. 实际键盘监听和方向键注入依赖系统权限。")
                     Text("2. 你可以现在就决定是否启用开机启动。")
-                    Text("3. 这版工程骨架已经把菜单栏、设置和状态管理接好。")
+                    Text("3. 菜单栏、设置和运行状态会随着权限与监听状态实时更新。")
                 }
                 .frame(maxWidth: .infinity, alignment: .leading)
             }
@@ -29,8 +29,14 @@ struct OnboardingView: View {
             Toggle("开机启动", isOn: $enableLaunchAtLogin)
 
             HStack {
+                Button("请求权限") {
+                    Task {
+                        await coordinator.requestPermissions()
+                    }
+                }
+
                 Button("打开系统设置") {
-                    coordinator.openSystemSettings()
+                    coordinator.openSystemSettings(for: coordinator.preferredSettingsPermissionKind())
                 }
 
                 Spacer()

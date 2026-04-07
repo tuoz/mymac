@@ -119,8 +119,17 @@ final class AppCoordinator {
         )
     }
 
-    func openSystemSettings() {
-        permissionService.openSystemSettings()
+    func requestPermissions() async {
+        appState.permissions = await permissionService.requestRequiredPermissions()
+        diagnosticsService.log(
+            "Requested permissions: accessibility=\(appState.permissions.accessibility.displayName), inputMonitoring=\(appState.permissions.inputMonitoring.displayName)",
+            category: .permissions
+        )
+        await reconcileKeyboardMappingState(requestPermissionsIfNeeded: false)
+    }
+
+    func openSystemSettings(for kind: PermissionKind? = nil) {
+        permissionService.openSystemSettings(for: kind)
     }
 
     func setKeyboardMappingEnabled(_ enabled: Bool) async {
@@ -168,7 +177,7 @@ final class AppCoordinator {
         ruleSnapshotFactory.makeSnapshot(isEnabled: appState.isKeyboardMappingEnabled)
     }
 
-    private func reconcileKeyboardMappingState() async {
+    private func reconcileKeyboardMappingState(requestPermissionsIfNeeded: Bool = true) async {
         if !appState.isKeyboardMappingEnabled {
             await keyboardMappingService.stop()
             appState.runtimeStatus = .paused
@@ -176,9 +185,19 @@ final class AppCoordinator {
         }
 
         if !permissionService.canStartMapping(appState.permissions) {
-            await keyboardMappingService.stop()
-            appState.runtimeStatus = .missingPermissions
-            return
+            if requestPermissionsIfNeeded {
+                appState.permissions = await permissionService.requestRequiredPermissions()
+                diagnosticsService.log(
+                    "Auto-requested permissions during reconciliation: accessibility=\(appState.permissions.accessibility.displayName), inputMonitoring=\(appState.permissions.inputMonitoring.displayName)",
+                    category: .permissions
+                )
+            }
+
+            if !permissionService.canStartMapping(appState.permissions) {
+                await keyboardMappingService.stop()
+                appState.runtimeStatus = .missingPermissions
+                return
+            }
         }
 
         let snapshot = makeCurrentRuleSnapshot()
@@ -187,11 +206,26 @@ final class AppCoordinator {
         switch currentStatus {
         case .running:
             await keyboardMappingService.reloadRules(snapshot)
+        case .tapDisabled, .failed:
+            await keyboardMappingService.stop()
+            await keyboardMappingService.start(with: snapshot)
         default:
             await keyboardMappingService.start(with: snapshot)
         }
 
         appState.runtimeStatus = await keyboardMappingService.currentStatus()
+    }
+
+    func preferredSettingsPermissionKind() -> PermissionKind? {
+        if appState.permissions.inputMonitoring != .granted {
+            return .inputMonitoring
+        }
+
+        if appState.permissions.accessibility != .granted {
+            return .accessibility
+        }
+
+        return nil
     }
 
     private func makeWindowController<Content: View>(

@@ -3,6 +3,7 @@ enum RuntimeStatus: Sendable, Equatable {
     case running
     case paused
     case missingPermissions
+    case tapDisabled
     case unavailable
     case failed(String)
 
@@ -16,6 +17,8 @@ enum RuntimeStatus: Sendable, Equatable {
             return "Paused"
         case .missingPermissions:
             return "Missing Permissions"
+        case .tapDisabled:
+            return "Tap Disabled"
         case .unavailable:
             return "Unavailable"
         case .failed(let message):

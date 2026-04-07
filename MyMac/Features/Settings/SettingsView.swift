@@ -70,13 +70,19 @@ private struct PermissionsSettingsView: View {
                 .frame(maxWidth: .infinity, alignment: .leading)
             }
 
-            Text("第一版骨架使用统一权限状态呈现，为下一步接入真实 event tap 留出接口。")
+            Text("MyMac 现在会尝试建立真实键盘监听与事件注入链路；权限不完整时，状态会回落到明确的不可用提示。")
                 .font(.footnote)
                 .foregroundStyle(.secondary)
 
             HStack {
+                Button("请求权限") {
+                    Task {
+                        await coordinator.requestPermissions()
+                    }
+                }
+
                 Button("打开系统设置") {
-                    coordinator.openSystemSettings()
+                    coordinator.openSystemSettings(for: coordinator.preferredSettingsPermissionKind())
                 }
 
                 Button("重新检测") {

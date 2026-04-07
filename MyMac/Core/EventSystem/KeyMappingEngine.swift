@@ -1,5 +1,9 @@
 struct KeyMappingEngine {
-    func action(for event: KeyEventSnapshot, snapshot: RuleSnapshot) -> OutputAction? {
+    func action(
+        for event: KeyEventSnapshot,
+        effectiveModifiers: ModifierSet,
+        snapshot: RuleSnapshot
+    ) -> OutputAction? {
         guard snapshot.isEnabled else {
             return nil
         }
@@ -9,7 +13,7 @@ struct KeyMappingEngine {
         }
 
         let chord = InputChord(keyCode: event.keyCode, requiredModifiers: .fn)
-        guard event.modifiers.contains(.fn),
+        guard effectiveModifiers.contains(.fn),
               let mappedAction = snapshot.mappings[chord] else {
             return nil
         }
@@ -18,7 +22,7 @@ struct KeyMappingEngine {
         case .keyboard(let keyCode, _, _, _):
             return .keyboard(
                 keyCode: keyCode,
-                modifiers: event.modifiers.removing(.fn),
+                modifiers: effectiveModifiers.removing(.fn),
                 kind: event.kind,
                 isAutorepeat: event.isAutorepeat
             )
