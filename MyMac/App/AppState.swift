@@ -18,7 +18,7 @@ final class AppState {
     }
 
     var permissionSummary: String {
-        if permissions.accessibility == .granted && permissions.inputMonitoring == .granted {
+        if permissions.accessibility == .granted {
             return "已授权"
         }
 

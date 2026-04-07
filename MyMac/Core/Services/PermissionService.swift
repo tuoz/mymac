@@ -5,13 +5,11 @@ import CoreGraphics
 protocol PermissionService: Sendable {
     func refreshStatus() async -> PermissionsSnapshot
     func requestRequiredPermissions() async -> PermissionsSnapshot
-    func openSystemSettings(for kind: PermissionKind?)
+    func openSystemSettings()
     func canStartMapping(_ permissions: PermissionsSnapshot) -> Bool
 }
 
 protocol PermissionSystemClient: Sendable {
-    func preflightListenEventAccess() -> Bool
-    func requestListenEventAccess() -> Bool
     func preflightPostEventAccess() -> Bool
     func requestPostEventAccess() -> Bool
     func isAccessibilityTrusted() -> Bool
@@ -19,14 +17,6 @@ protocol PermissionSystemClient: Sendable {
 }
 
 struct CoreGraphicsPermissionSystemClient: PermissionSystemClient {
-    func preflightListenEventAccess() -> Bool {
-        CGPreflightListenEventAccess()
-    }
-
-    func requestListenEventAccess() -> Bool {
-        CGRequestListenEventAccess()
-    }
-
     func preflightPostEventAccess() -> Bool {
         CGPreflightPostEventAccess()
     }
@@ -53,20 +43,12 @@ struct DefaultPermissionService: PermissionService {
     }
 
     func refreshStatus() async -> PermissionsSnapshot {
-        let inputMonitoringState: PermissionState = client.preflightListenEventAccess() ? .granted : .requiresUserAction
         let accessibilityState: PermissionState = (client.preflightPostEventAccess() && client.isAccessibilityTrusted()) ? .granted : .requiresUserAction
 
-        return PermissionsSnapshot(
-            accessibility: accessibilityState,
-            inputMonitoring: inputMonitoringState
-        )
+        return PermissionsSnapshot(accessibility: accessibilityState)
     }
 
     func requestRequiredPermissions() async -> PermissionsSnapshot {
-        if !client.preflightListenEventAccess() {
-            _ = client.requestListenEventAccess()
-        }
-
         if !client.preflightPostEventAccess() {
             _ = client.requestPostEventAccess()
         }
@@ -78,17 +60,8 @@ struct DefaultPermissionService: PermissionService {
         return await refreshStatus()
     }
 
-    func openSystemSettings(for kind: PermissionKind?) {
-        let urlString: String
-
-        switch kind {
-        case .inputMonitoring:
-            urlString = "x-apple.systempreferences:com.apple.preference.security?Privacy_ListenEvent"
-        case .accessibility, .none:
-            urlString = "x-apple.systempreferences:com.apple.preference.security?Privacy_Accessibility"
-        }
-
-        guard let url = URL(string: urlString) else {
+    func openSystemSettings() {
+        guard let url = URL(string: "x-apple.systempreferences:com.apple.preference.security?Privacy_Accessibility") else {
             return
         }
 
@@ -96,6 +69,6 @@ struct DefaultPermissionService: PermissionService {
     }
 
     func canStartMapping(_ permissions: PermissionsSnapshot) -> Bool {
-        permissions.accessibility == .granted && permissions.inputMonitoring == .granted
+        permissions.accessibility == .granted
     }
 }

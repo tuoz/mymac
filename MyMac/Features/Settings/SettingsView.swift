@@ -65,12 +65,11 @@ private struct PermissionsSettingsView: View {
             GroupBox("核心权限状态") {
                 VStack(alignment: .leading, spacing: 8) {
                     LabeledContent("Accessibility", value: appState.permissions.accessibility.displayName)
-                    LabeledContent("Input Monitoring", value: appState.permissions.inputMonitoring.displayName)
                 }
                 .frame(maxWidth: .infinity, alignment: .leading)
             }
 
-            Text("MyMac 现在会尝试建立真实键盘监听与事件注入链路；权限不完整时，状态会回落到明确的不可用提示。")
+            Text("MyMac 依赖 Accessibility 权限完成按键拦截与事件注入；权限不完整时，状态会回落到明确的不可用提示。")
                 .font(.footnote)
                 .foregroundStyle(.secondary)
 
@@ -82,7 +81,7 @@ private struct PermissionsSettingsView: View {
                 }
 
                 Button("打开系统设置") {
-                    coordinator.openSystemSettings(for: coordinator.preferredSettingsPermissionKind())
+                    coordinator.openSystemSettings()
                 }
 
                 Button("重新检测") {

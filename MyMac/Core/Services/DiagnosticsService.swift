@@ -16,7 +16,7 @@ protocol DiagnosticsService: Sendable {
 struct LoggerDiagnosticsService: DiagnosticsService {
     private let subsystem: String
 
-    init(subsystem: String = Bundle.main.bundleIdentifier ?? "com.local.mymac") {
+    init(subsystem: String = Bundle.main.bundleIdentifier ?? "com.tuoz.mymac") {
         self.subsystem = subsystem
     }
 

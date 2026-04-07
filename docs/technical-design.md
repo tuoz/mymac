@@ -147,7 +147,7 @@ Persistence
 
 职责：
 
-- 检测监听权限与事件注入权限
+- 检测当前映射链路所需的辅助功能权限
 - 提供权限申请引导
 - 暴露权限状态给 UI
 
@@ -163,15 +163,14 @@ enum PermissionState: Sendable, Equatable {
 
 struct PermissionsSnapshot: Sendable, Equatable {
     var accessibility: PermissionState
-    var inputMonitoring: PermissionState
 }
 ```
 
 说明：
 
-- macOS 上“监听全局键盘事件”和“投递模拟键盘事件”可能涉及不同权限路径
-- UI 文案层面统一抽象为“核心权限未完整开启”
-- 底层实现层面分别检测、分别展示、分别重试
+- 当前实现采用 modifying event tap + post event 路径
+- 用户可见权限模型统一为 `Accessibility`
+- 底层通过 `CGPreflightPostEventAccess()` 与 `AXIsProcessTrusted()` 共同判断可用性
 
 ## 6.3 LaunchAtLoginService
 

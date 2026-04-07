@@ -74,7 +74,7 @@ private final class EventTapController: NSObject {
         startupSemaphore = semaphore
 
         let thread = Thread(target: self, selector: #selector(runEventLoop), object: nil)
-        thread.name = "com.local.mymac.eventtap"
+        thread.name = "com.tuoz.mymac.eventtap"
         workerThread = thread
         stateLock.unlock()
 

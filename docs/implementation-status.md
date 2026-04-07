@@ -55,9 +55,6 @@
 已完成：
 
 - `PermissionService` 从占位实现升级为真实系统权限实现
-- 区分了：
-  - `inputMonitoring`
-  - `accessibility`
 - 提供了：
   - 状态刷新
   - 主动请求权限
@@ -66,9 +63,9 @@
 
 实现说明：
 
-- 监听权限使用 Quartz 的 listen event access API
-- 投递权限使用 Quartz 的 post event access API
-- Accessibility 仍参与最终“能否启动映射”的判断
+- 当前实现已收敛为单一用户可见权限模型：`Accessibility`
+- 底层通过 Quartz 的 `post event access` 和 AX trusted 状态共同判断是否可用
+- UI 与运行状态不再展示 `Input Monitoring`
 - Swift 6 并发检查相关问题已处理
 
 关键文件：
@@ -142,20 +139,23 @@
 已完成：
 
 - 纯逻辑测试已更新到新接口
-- `swiftc` 类型检查通过
 - 使用 Xcode 真实工具链完成了 `xcodebuild` Debug 构建
+- 修复了 `MyMacTests` 的宿主绑定，`xcodebuild test` 已可正常执行
 
 已验证命令：
 
 ```bash
 DEVELOPER_DIR=/Applications/Xcode.app/Contents/Developer \
 xcodebuild -project MyMac.xcodeproj -scheme MyMac -configuration Debug -sdk macosx build
+
+DEVELOPER_DIR=/Applications/Xcode.app/Contents/Developer \
+xcodebuild test -project MyMac.xcodeproj -scheme MyMac -destination 'platform=macOS'
 ```
 
 结论：
 
 - 当前代码在编译层面是通的
-- 至少不存在阻塞构建的 Swift 6 / CoreGraphics / 权限接口级错误
+- App target 与测试 target 都可正常构建和运行
 
 ## 4. 当前未完成项
 
@@ -171,15 +171,13 @@ xcodebuild -project MyMac.xcodeproj -scheme MyMac -configuration Debug -sdk maco
 - autorepeat 在真实应用中是否接近系统方向键体验
 - 外接键盘与内建键盘对 `Fn` 的表现是否一致
 
-### 4.2 权限模型仍偏保守
+### 4.2 权限行为仍需跨环境验证
 
-当前实现采用了“监听权限 + 投递权限 + Accessibility”共同判断是否允许启动真实映射。
+当前实现已统一为 `Accessibility` 驱动的权限模型，但以下点仍建议继续验证：
 
-这能减少误启动，但在不同 macOS 版本上可能存在以下需要继续验证的点：
-
-- 是否真的必须同时依赖这三者
-- `post event access` 与 Accessibility 的职责边界是否存在重叠
-- UI 上是否需要把文案进一步细化
+- 不同 macOS 版本上 `post event access` 与 Accessibility 设置页之间的映射关系是否一致
+- 新 bundle identifier、DerivedData 运行、复制到 `/Applications` 运行时的授权体验是否一致
+- 权限切换后 Event Tap 恢复是否稳定
 
 ### 4.3 tap 生命周期仍需经过真实场景验证
 

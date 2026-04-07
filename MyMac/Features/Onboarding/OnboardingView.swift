@@ -19,7 +19,7 @@ struct OnboardingView: View {
 
             GroupBox("开始前需要知道") {
                 VStack(alignment: .leading, spacing: 8) {
-                    Text("1. 实际键盘监听和方向键注入依赖系统权限。")
+                    Text("1. MyMac 需要 Accessibility 权限才能拦截并重发按键事件。")
                     Text("2. 你可以现在就决定是否启用开机启动。")
                     Text("3. 菜单栏、设置和运行状态会随着权限与监听状态实时更新。")
                 }
@@ -36,7 +36,7 @@ struct OnboardingView: View {
                 }
 
                 Button("打开系统设置") {
-                    coordinator.openSystemSettings(for: coordinator.preferredSettingsPermissionKind())
+                    coordinator.openSystemSettings()
                 }
 
                 Spacer()
