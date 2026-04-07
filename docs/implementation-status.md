@@ -64,7 +64,8 @@
 实现说明：
 
 - 当前实现已收敛为单一用户可见权限模型：`Accessibility`
-- 底层通过 Quartz 的 `post event access` 和 AX trusted 状态共同判断是否可用
+- 权限状态仅通过 AX trusted 状态判断
+- 权限同步与运行状态协调由 `AppCoordinator` 在启动、主动请求权限、首次引导完成、用户点击“重新检测”、应用回到前台时统一触发
 - UI 与运行状态不再展示 `Input Monitoring`
 - Swift 6 并发检查相关问题已处理
 
@@ -124,8 +125,11 @@
 已完成：
 
 - 设置页新增“请求权限”入口
+- 设置页“请求权限”会在触发系统提示后立即同步权限与运行状态
+- 设置页“重新检测”现在会刷新权限并立即协调运行状态
 - 首次引导页新增“请求权限”入口
-- `AppCoordinator` 会在启动和状态切换时根据权限状态决定是否启动真实映射服务
+- 首次引导完成后会立即同步权限与运行状态
+- `AppCoordinator` 会在启动、主动请求权限、首次引导完成、用户主动重新检测、应用回到前台时根据权限状态决定是否启动或停用真实映射服务
 - `RuntimeStatus` 已增加 `tapDisabled`
 - 菜单栏图标已能反映更多运行状态
 
@@ -141,6 +145,8 @@
 - 纯逻辑测试已更新到新接口
 - 使用 Xcode 真实工具链完成了 `xcodebuild` Debug 构建
 - 修复了 `MyMacTests` 的宿主绑定，`xcodebuild test` 已可正常执行
+- 单测已覆盖权限服务、首次启动权限分支、手动“重新检测”、应用回前台自动刷新、功能关闭时不自动启动、已授权但底层启动失败等关键场景
+- 已手工验证首次授权后的“重新检测”链路可正常恢复权限状态与功能，无需重启应用
 
 已验证命令：
 
@@ -175,9 +181,8 @@ xcodebuild test -project MyMac.xcodeproj -scheme MyMac -destination 'platform=ma
 
 当前实现已统一为 `Accessibility` 驱动的权限模型，但以下点仍建议继续验证：
 
-- 不同 macOS 版本上 `post event access` 与 Accessibility 设置页之间的映射关系是否一致
 - 新 bundle identifier、DerivedData 运行、复制到 `/Applications` 运行时的授权体验是否一致
-- 权限切换后 Event Tap 恢复是否稳定
+- 权限切换后 Event Tap 恢复是否在更多 macOS 版本和安装形态下稳定
 
 ### 4.3 tap 生命周期仍需经过真实场景验证
 
@@ -234,6 +239,7 @@ xcodebuild test -project MyMac.xcodeproj -scheme MyMac -destination 'platform=ma
 - 启动应用
 - 授权所需权限
 - 在真实前台应用中验证 `Fn + H/J/K/L`
+- 补充验证“从系统设置授权后切回应用自动恢复”的链路
 
 重点观察：
 
@@ -241,6 +247,7 @@ xcodebuild test -project MyMac.xcodeproj -scheme MyMac -destination 'platform=ma
 - 方向键是否被正确注入
 - 组合修饰键是否保留
 - 长按是否正常
+- 自动恢复与手动“重新检测”是否都稳定
 
 ### 任务 2：日志与诊断增强
 

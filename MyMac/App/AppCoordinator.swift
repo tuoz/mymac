@@ -42,13 +42,16 @@ final class AppCoordinator {
         diagnosticsService.log("Application launched", category: .app)
         syncStateFromStore()
         syncLaunchAtLoginStatus()
-        await refreshPermissions()
 
         if !appState.hasCompletedOnboarding {
             showOnboarding()
         }
 
-        await reconcileKeyboardMappingState()
+        await synchronizePermissionsAndRuntimeState(trigger: .appLaunch)
+    }
+
+    func handleAppDidBecomeActive() async {
+        await synchronizePermissionsAndRuntimeState(trigger: .appDidBecomeActive)
     }
 
     func showSettings() {
@@ -111,21 +114,20 @@ final class AppCoordinator {
         NSApp.terminate(nil)
     }
 
-    func refreshPermissions() async {
-        appState.permissions = await permissionService.refreshStatus()
-        diagnosticsService.log(
-            "Permissions refreshed: accessibility=\(appState.permissions.accessibility.displayName)",
-            category: .permissions
-        )
+    func recheckPermissions() async {
+        await synchronizePermissionsAndRuntimeState(trigger: .manualRecheck)
     }
 
     func requestPermissions() async {
-        appState.permissions = await permissionService.requestRequiredPermissions()
         diagnosticsService.log(
-            "Requested permissions: accessibility=\(appState.permissions.accessibility.displayName)",
+            "User requested Accessibility prompt",
             category: .permissions
         )
-        await reconcileKeyboardMappingState(requestPermissionsIfNeeded: false)
+        let requestedPermissions = await permissionService.requestRequiredPermissions()
+        await synchronizePermissionsAndRuntimeState(
+            trigger: .userRequestedPrompt,
+            permissions: requestedPermissions
+        )
     }
 
     func openSystemSettings() {
@@ -160,8 +162,7 @@ final class AppCoordinator {
         settingsStore.hasCompletedOnboarding = true
         appState.hasCompletedOnboarding = true
         closeOnboarding()
-        await refreshPermissions()
-        await reconcileKeyboardMappingState()
+        await synchronizePermissionsAndRuntimeState(trigger: .onboardingCompleted)
     }
 
     private func syncStateFromStore() {
@@ -177,7 +178,29 @@ final class AppCoordinator {
         ruleSnapshotFactory.makeSnapshot(isEnabled: appState.isKeyboardMappingEnabled)
     }
 
-    private func reconcileKeyboardMappingState(requestPermissionsIfNeeded: Bool = true) async {
+    private func synchronizePermissionsAndRuntimeState(
+        trigger: PermissionSynchronizationTrigger,
+        permissions: PermissionsSnapshot? = nil
+    ) async {
+        if let permissions {
+            appState.permissions = permissions
+        } else {
+            appState.permissions = await permissionService.refreshStatus()
+        }
+
+        diagnosticsService.log(
+            "Permissions synchronized (\(trigger.logDescription)): accessibility=\(appState.permissions.accessibility.displayName)",
+            category: .permissions
+        )
+
+        await reconcileKeyboardMappingState()
+        diagnosticsService.log(
+            "Runtime reconciled (\(trigger.logDescription)): status=\(appState.runtimeStatus.displayName)",
+            category: .permissions
+        )
+    }
+
+    private func reconcileKeyboardMappingState() async {
         if !appState.isKeyboardMappingEnabled {
             await keyboardMappingService.stop()
             appState.runtimeStatus = .paused
@@ -185,19 +208,9 @@ final class AppCoordinator {
         }
 
         if !permissionService.canStartMapping(appState.permissions) {
-            if requestPermissionsIfNeeded {
-                appState.permissions = await permissionService.requestRequiredPermissions()
-                diagnosticsService.log(
-                    "Auto-requested permissions during reconciliation: accessibility=\(appState.permissions.accessibility.displayName)",
-                    category: .permissions
-                )
-            }
-
-            if !permissionService.canStartMapping(appState.permissions) {
-                await keyboardMappingService.stop()
-                appState.runtimeStatus = .missingPermissions
-                return
-            }
+            await keyboardMappingService.stop()
+            appState.runtimeStatus = .missingPermissions
+            return
         }
 
         let snapshot = makeCurrentRuleSnapshot()
@@ -239,6 +252,29 @@ final class AppCoordinator {
         controller.showWindow(nil)
         controller.window?.makeKeyAndOrderFront(nil)
         NSApp.activate(ignoringOtherApps: true)
+    }
+}
+
+private enum PermissionSynchronizationTrigger {
+    case appLaunch
+    case appDidBecomeActive
+    case manualRecheck
+    case onboardingCompleted
+    case userRequestedPrompt
+
+    var logDescription: String {
+        switch self {
+        case .appLaunch:
+            return "app launch"
+        case .appDidBecomeActive:
+            return "app became active"
+        case .manualRecheck:
+            return "manual recheck"
+        case .onboardingCompleted:
+            return "onboarding completed"
+        case .userRequestedPrompt:
+            return "user requested prompt"
+        }
     }
 }
 

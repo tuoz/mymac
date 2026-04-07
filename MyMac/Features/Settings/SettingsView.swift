@@ -86,7 +86,7 @@ private struct PermissionsSettingsView: View {
 
                 Button("重新检测") {
                     Task {
-                        await coordinator.refreshPermissions()
+                        await coordinator.recheckPermissions()
                     }
                 }
             }

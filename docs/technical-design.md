@@ -168,9 +168,9 @@ struct PermissionsSnapshot: Sendable, Equatable {
 
 说明：
 
-- 当前实现采用 modifying event tap + post event 路径
-- 用户可见权限模型统一为 `Accessibility`
-- 底层通过 `CGPreflightPostEventAccess()` 与 `AXIsProcessTrusted()` 共同判断可用性
+- 当前实现采用 modifying event tap 路径，并以 `Accessibility` 作为唯一用户可见权限
+- `PermissionService` 只通过 `AXIsProcessTrusted()` / `AXIsProcessTrustedWithOptions(...)` 判断和引导授权
+- 若底层 event tap 或事件注入失败，应通过运行状态暴露，而不是回退为“缺少权限”
 
 ## 6.3 LaunchAtLoginService
 
@@ -483,7 +483,8 @@ App Launch
   -> 若缺权限，展示解释与入口
   -> 用户跳转系统设置授权
   -> 返回应用
-  -> 用户点击“重新检测”
+  -> 应用回到 active 时自动刷新权限与运行状态
+  -> 用户也可点击“重新检测”
   -> 若已齐全，启动或重启 EventTapController
 ```
 

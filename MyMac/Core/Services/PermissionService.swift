@@ -1,6 +1,5 @@
 import AppKit
 import ApplicationServices
-import CoreGraphics
 
 protocol PermissionService: Sendable {
     func refreshStatus() async -> PermissionsSnapshot
@@ -10,21 +9,11 @@ protocol PermissionService: Sendable {
 }
 
 protocol PermissionSystemClient: Sendable {
-    func preflightPostEventAccess() -> Bool
-    func requestPostEventAccess() -> Bool
     func isAccessibilityTrusted() -> Bool
     func requestAccessibilityPrompt()
 }
 
 struct CoreGraphicsPermissionSystemClient: PermissionSystemClient {
-    func preflightPostEventAccess() -> Bool {
-        CGPreflightPostEventAccess()
-    }
-
-    func requestPostEventAccess() -> Bool {
-        CGRequestPostEventAccess()
-    }
-
     func isAccessibilityTrusted() -> Bool {
         AXIsProcessTrusted()
     }
@@ -43,16 +32,12 @@ struct DefaultPermissionService: PermissionService {
     }
 
     func refreshStatus() async -> PermissionsSnapshot {
-        let accessibilityState: PermissionState = (client.preflightPostEventAccess() && client.isAccessibilityTrusted()) ? .granted : .requiresUserAction
+        let accessibilityState: PermissionState = client.isAccessibilityTrusted() ? .granted : .requiresUserAction
 
         return PermissionsSnapshot(accessibility: accessibilityState)
     }
 
     func requestRequiredPermissions() async -> PermissionsSnapshot {
-        if !client.preflightPostEventAccess() {
-            _ = client.requestPostEventAccess()
-        }
-
         if !client.isAccessibilityTrusted() {
             client.requestAccessibilityPrompt()
         }
