@@ -18,17 +18,12 @@
 		A10000000000000000000009 /* PermissionModels.swift in Sources */ = {isa = PBXBuildFile; fileRef = B10000000000000000000009 /* PermissionModels.swift */; };
 		A1000000000000000000000A /* LaunchAtLoginModels.swift in Sources */ = {isa = PBXBuildFile; fileRef = B1000000000000000000000A /* LaunchAtLoginModels.swift */; };
 		A1000000000000000000000B /* RuntimeStatus.swift in Sources */ = {isa = PBXBuildFile; fileRef = B1000000000000000000000B /* RuntimeStatus.swift */; };
-		A1000000000000000000000C /* InputModels.swift in Sources */ = {isa = PBXBuildFile; fileRef = B1000000000000000000000C /* InputModels.swift */; };
-		A1000000000000000000000D /* AppAction.swift in Sources */ = {isa = PBXBuildFile; fileRef = B1000000000000000000000D /* AppAction.swift */; };
 		A1000000000000000000000E /* PermissionService.swift in Sources */ = {isa = PBXBuildFile; fileRef = B1000000000000000000000E /* PermissionService.swift */; };
 		A1000000000000000000000F /* LaunchAtLoginService.swift in Sources */ = {isa = PBXBuildFile; fileRef = B1000000000000000000000F /* LaunchAtLoginService.swift */; };
 		A10000000000000000000010 /* DiagnosticsService.swift in Sources */ = {isa = PBXBuildFile; fileRef = B10000000000000000000010 /* DiagnosticsService.swift */; };
 		A10000000000000000000011 /* KeyboardMappingService.swift in Sources */ = {isa = PBXBuildFile; fileRef = B10000000000000000000011 /* KeyboardMappingService.swift */; };
-		A10000000000000000000012 /* KeyMappingEngine.swift in Sources */ = {isa = PBXBuildFile; fileRef = B10000000000000000000012 /* KeyMappingEngine.swift */; };
-		A10000000000000000000013 /* DefaultRuleSnapshotFactory.swift in Sources */ = {isa = PBXBuildFile; fileRef = B10000000000000000000013 /* DefaultRuleSnapshotFactory.swift */; };
 		A10000000000000000000014 /* SettingsStore.swift in Sources */ = {isa = PBXBuildFile; fileRef = B10000000000000000000014 /* SettingsStore.swift */; };
-		A10000000000000000000015 /* DefaultRuleSnapshotFactoryTests.swift in Sources */ = {isa = PBXBuildFile; fileRef = B10000000000000000000015 /* DefaultRuleSnapshotFactoryTests.swift */; };
-		A10000000000000000000016 /* KeyMappingEngineTests.swift in Sources */ = {isa = PBXBuildFile; fileRef = B10000000000000000000016 /* KeyMappingEngineTests.swift */; };
+		A10000000000000000000016 /* KeyboardMappingServiceTests.swift in Sources */ = {isa = PBXBuildFile; fileRef = B10000000000000000000016 /* KeyboardMappingServiceTests.swift */; };
 		A10000000000000000000017 /* SettingsStoreTests.swift in Sources */ = {isa = PBXBuildFile; fileRef = B10000000000000000000017 /* SettingsStoreTests.swift */; };
 		A10000000000000000000018 /* LaunchAtLoginStatusMapperTests.swift in Sources */ = {isa = PBXBuildFile; fileRef = B10000000000000000000018 /* LaunchAtLoginStatusMapperTests.swift */; };
 		A10000000000000000000019 /* Assets.xcassets in Resources */ = {isa = PBXBuildFile; fileRef = B1000000000000000000001B /* Assets.xcassets */; };
@@ -56,17 +51,12 @@
 		B10000000000000000000009 /* PermissionModels.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = PermissionModels.swift; sourceTree = "<group>"; };
 		B1000000000000000000000A /* LaunchAtLoginModels.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = LaunchAtLoginModels.swift; sourceTree = "<group>"; };
 		B1000000000000000000000B /* RuntimeStatus.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = RuntimeStatus.swift; sourceTree = "<group>"; };
-		B1000000000000000000000C /* InputModels.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = InputModels.swift; sourceTree = "<group>"; };
-		B1000000000000000000000D /* AppAction.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = AppAction.swift; sourceTree = "<group>"; };
 		B1000000000000000000000E /* PermissionService.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = PermissionService.swift; sourceTree = "<group>"; };
 		B1000000000000000000000F /* LaunchAtLoginService.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = LaunchAtLoginService.swift; sourceTree = "<group>"; };
 		B10000000000000000000010 /* DiagnosticsService.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = DiagnosticsService.swift; sourceTree = "<group>"; };
 		B10000000000000000000011 /* KeyboardMappingService.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = KeyboardMappingService.swift; sourceTree = "<group>"; };
-		B10000000000000000000012 /* KeyMappingEngine.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = KeyMappingEngine.swift; sourceTree = "<group>"; };
-		B10000000000000000000013 /* DefaultRuleSnapshotFactory.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = DefaultRuleSnapshotFactory.swift; sourceTree = "<group>"; };
 		B10000000000000000000014 /* SettingsStore.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = SettingsStore.swift; sourceTree = "<group>"; };
-		B10000000000000000000015 /* DefaultRuleSnapshotFactoryTests.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = DefaultRuleSnapshotFactoryTests.swift; sourceTree = "<group>"; };
-		B10000000000000000000016 /* KeyMappingEngineTests.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = KeyMappingEngineTests.swift; sourceTree = "<group>"; };
+		B10000000000000000000016 /* KeyboardMappingServiceTests.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = KeyboardMappingServiceTests.swift; sourceTree = "<group>"; };
 		B10000000000000000000017 /* SettingsStoreTests.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = SettingsStoreTests.swift; sourceTree = "<group>"; };
 		B10000000000000000000018 /* LaunchAtLoginStatusMapperTests.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = LaunchAtLoginStatusMapperTests.swift; sourceTree = "<group>"; };
 		B10000000000000000000019 /* MyMac.app */ = {isa = PBXFileReference; explicitFileType = wrapper.application; path = MyMac.app; sourceTree = BUILT_PRODUCTS_DIR; };
@@ -187,8 +177,6 @@
 				B10000000000000000000009 /* PermissionModels.swift */,
 				B1000000000000000000000A /* LaunchAtLoginModels.swift */,
 				B1000000000000000000000B /* RuntimeStatus.swift */,
-				B1000000000000000000000C /* InputModels.swift */,
-				B1000000000000000000000D /* AppAction.swift */,
 			);
 			path = Domain;
 			sourceTree = "<group>";
@@ -196,8 +184,7 @@
 		A7000000000000000000000A /* MyMacTests */ = {
 			isa = PBXGroup;
 			children = (
-				B10000000000000000000015 /* DefaultRuleSnapshotFactoryTests.swift */,
-				B10000000000000000000016 /* KeyMappingEngineTests.swift */,
+				B10000000000000000000016 /* KeyboardMappingServiceTests.swift */,
 				B10000000000000000000017 /* SettingsStoreTests.swift */,
 				B10000000000000000000018 /* LaunchAtLoginStatusMapperTests.swift */,
 			);
@@ -234,8 +221,6 @@
 			isa = PBXGroup;
 			children = (
 				B10000000000000000000011 /* KeyboardMappingService.swift */,
-				B10000000000000000000012 /* KeyMappingEngine.swift */,
-				B10000000000000000000013 /* DefaultRuleSnapshotFactory.swift */,
 			);
 			path = EventSystem;
 			sourceTree = "<group>";
@@ -343,14 +328,10 @@
 				A10000000000000000000009 /* PermissionModels.swift in Sources */,
 				A1000000000000000000000A /* LaunchAtLoginModels.swift in Sources */,
 				A1000000000000000000000B /* RuntimeStatus.swift in Sources */,
-				A1000000000000000000000C /* InputModels.swift in Sources */,
-				A1000000000000000000000D /* AppAction.swift in Sources */,
 				A1000000000000000000000E /* PermissionService.swift in Sources */,
 				A1000000000000000000000F /* LaunchAtLoginService.swift in Sources */,
 				A10000000000000000000010 /* DiagnosticsService.swift in Sources */,
 				A10000000000000000000011 /* KeyboardMappingService.swift in Sources */,
-				A10000000000000000000012 /* KeyMappingEngine.swift in Sources */,
-				A10000000000000000000013 /* DefaultRuleSnapshotFactory.swift in Sources */,
 				A10000000000000000000014 /* SettingsStore.swift in Sources */,
 			);
 			runOnlyForDeploymentPostprocessing = 0;
@@ -359,8 +340,7 @@
 			isa = PBXSourcesBuildPhase;
 			buildActionMask = 2147483647;
 			files = (
-				A10000000000000000000015 /* DefaultRuleSnapshotFactoryTests.swift in Sources */,
-				A10000000000000000000016 /* KeyMappingEngineTests.swift in Sources */,
+				A10000000000000000000016 /* KeyboardMappingServiceTests.swift in Sources */,
 				A10000000000000000000017 /* SettingsStoreTests.swift in Sources */,
 				A10000000000000000000018 /* LaunchAtLoginStatusMapperTests.swift in Sources */,
 			);

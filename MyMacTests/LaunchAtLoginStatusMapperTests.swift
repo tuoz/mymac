@@ -332,7 +332,7 @@ private final class MockKeyboardMappingService: KeyboardMappingService, @uncheck
         self.statusAfterStart = statusAfterStart
     }
 
-    func start(with snapshot: RuleSnapshot) async {
+    func start() async {
         startCallCount += 1
         status = statusAfterStart
     }
@@ -340,10 +340,6 @@ private final class MockKeyboardMappingService: KeyboardMappingService, @uncheck
     func stop() async {
         stopCallCount += 1
         status = .paused
-    }
-
-    func reloadRules(_ snapshot: RuleSnapshot) async {
-        status = .running
     }
 
     func currentStatus() async -> RuntimeStatus {

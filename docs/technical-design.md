@@ -250,6 +250,12 @@ event tap 回调必须满足：
 2. 用当前规则快照进行匹配
 3. 决定 `pass through / suppress / inject action`
 
+说明：
+
+- 当前仓库的实际实现已经进一步收敛，不再保留 `KeyEventSnapshot / KeyMappingEngine / RuleSnapshotProvider` 这组独立抽象
+- 现状是由 [KeyboardMappingService.swift](/Users/tuoz/Workspace/projects/MyMac/MyMac/Core/EventSystem/KeyboardMappingService.swift) 直接使用系统 `CGEventFlags` 完成匹配、翻译和注入
+- 本节后续关于 `KeyMappingEngine`、`ModifierSet`、`RuleSnapshot` 的内容保留为早期设计草案，不应再被当作当前代码结构
+
 ### 6.4.3 事件类型
 
 MVP 至少监听：
@@ -613,12 +619,7 @@ MyMacApp/
       LaunchAtLoginService.swift
       DiagnosticsService.swift
     EventSystem/
-      EventTapController.swift
-      EventTapThread.swift
-      KeyEventSnapshot.swift
-      KeyMappingEngine.swift
-      KeyboardActionExecutor.swift
-      CGEvent+Helpers.swift
+      KeyboardMappingService.swift
     Persistence/
       SettingsStore.swift
   Resources/
@@ -628,6 +629,7 @@ MyMacApp/
 
 - 当前规模小，过早模块化收益不高
 - 先保证边界正确，再视复杂度升级为 package
+- 当前实际实现已经把键盘映射链路收敛到 `KeyboardMappingService.swift` 内部的小型辅助类型，而不是拆成旧设计中的多文件规则引擎
 
 ## 12. UI 技术设计
 
@@ -692,6 +694,7 @@ enum RuntimeStatus: Sendable, Equatable {
 
 - 不记录完整用户输入序列
 - 诊断日志以状态变化和计数为主
+- 逐事件 trace 只用于短期排障，不应长期保留在默认运行路径中
 
 ## 14. 测试设计
 
@@ -700,8 +703,7 @@ enum RuntimeStatus: Sendable, Equatable {
 重点测试纯逻辑层：
 
 - `ModifierNormalizerTests`
-- `KeyMappingEngineTests`
-- `RuleSnapshotProviderTests`
+- `KeyboardMappingServiceTests`
 - `LaunchAtLoginStatusMapperTests`
 
 关键用例：

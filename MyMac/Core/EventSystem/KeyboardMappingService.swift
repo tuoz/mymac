@@ -1,33 +1,26 @@
+import Carbon.HIToolbox
 import CoreGraphics
 import Foundation
 
 protocol KeyboardMappingService: Sendable {
-    func start(with snapshot: RuleSnapshot) async
+    func start() async
     func stop() async
-    func reloadRules(_ snapshot: RuleSnapshot) async
     func currentStatus() async -> RuntimeStatus
 }
 
 actor CGEventTapKeyboardMappingService: KeyboardMappingService {
-    private let diagnosticsService: DiagnosticsService
     private let controller: EventTapController
 
     init(diagnosticsService: DiagnosticsService) {
-        self.diagnosticsService = diagnosticsService
         self.controller = EventTapController(diagnosticsService: diagnosticsService)
     }
 
-    func start(with snapshot: RuleSnapshot) async {
-        controller.updateSnapshot(snapshot)
+    func start() async {
         _ = controller.start()
     }
 
     func stop() async {
         _ = controller.stop()
-    }
-
-    func reloadRules(_ snapshot: RuleSnapshot) async {
-        _ = controller.reloadRules(snapshot)
     }
 
     func currentStatus() async -> RuntimeStatus {
@@ -37,11 +30,10 @@ actor CGEventTapKeyboardMappingService: KeyboardMappingService {
 
 private final class EventTapController: NSObject {
     private let diagnosticsService: DiagnosticsService
-    private let engine = KeyMappingEngine()
+    private let translator = KeyboardEventTranslator()
     private let executor = KeyboardActionExecutor()
     private let stateLock = NSLock()
 
-    private var snapshot: RuleSnapshot?
     private var status: RuntimeStatus = .paused
     private var workerThread: Thread?
     private var startupSemaphore: DispatchSemaphore?
@@ -51,12 +43,6 @@ private final class EventTapController: NSObject {
 
     init(diagnosticsService: DiagnosticsService) {
         self.diagnosticsService = diagnosticsService
-    }
-
-    func updateSnapshot(_ snapshot: RuleSnapshot) {
-        stateLock.lock()
-        self.snapshot = snapshot
-        stateLock.unlock()
     }
 
     func start() -> RuntimeStatus {
@@ -75,6 +61,7 @@ private final class EventTapController: NSObject {
 
         let thread = Thread(target: self, selector: #selector(runEventLoop), object: nil)
         thread.name = "com.tuoz.mymac.eventtap"
+        thread.qualityOfService = .userInitiated
         workerThread = thread
         stateLock.unlock()
 
@@ -102,12 +89,6 @@ private final class EventTapController: NSObject {
         stateLock.unlock()
 
         perform(#selector(stopEventLoop), on: thread, with: nil, waitUntilDone: true)
-        return currentStatus()
-    }
-
-    func reloadRules(_ snapshot: RuleSnapshot) -> RuntimeStatus {
-        updateSnapshot(snapshot)
-        diagnosticsService.log("Reloaded keyboard mapping rules", category: .keyboardMapping)
         return currentStatus()
     }
 
@@ -217,46 +198,26 @@ private final class EventTapController: NSObject {
             return handleTapDisabled(eventType, event: event)
         }
 
-        stateLock.lock()
-        let currentSnapshot = snapshot
-        stateLock.unlock()
-
-        guard let currentSnapshot else {
+        if event.eventMarker == KeyboardEventTranslator.eventMarker {
             return Unmanaged.passUnretained(event)
         }
-
-        if event.eventMarker == currentSnapshot.eventMarker {
-            return Unmanaged.passUnretained(event)
-        }
-
-        let eventModifiers = ModifierSet(cgEventFlags: event.flags)
 
         if eventType == .flagsChanged {
-            modifierTracker.update(with: eventModifiers)
+            modifierTracker.update(with: event.flags)
             return Unmanaged.passUnretained(event)
         }
 
-        guard let kind = KeyEventKind(cgEventType: eventType) else {
-            return Unmanaged.passUnretained(event)
-        }
-
-        let effectiveModifiers = modifierTracker.effectiveModifiers(for: eventModifiers)
-        let snapshotEvent = KeyEventSnapshot(
-            kind: kind,
+        guard let payload = translator.translate(
+            eventType: eventType,
             keyCode: event.keyboardKeyCode,
-            modifiers: eventModifiers,
+            eventFlags: event.flags,
+            trackedFlags: modifierTracker.activeFlags,
             isAutorepeat: event.keyboardIsAutorepeat
-        )
-
-        guard let action = engine.action(
-            for: snapshotEvent,
-            effectiveModifiers: effectiveModifiers,
-            snapshot: currentSnapshot
         ) else {
             return Unmanaged.passUnretained(event)
         }
 
-        if executor.execute(action, eventMarker: currentSnapshot.eventMarker) {
+        if executor.execute(payload, eventMarker: KeyboardEventTranslator.eventMarker) {
             return nil
         }
 
@@ -274,43 +235,147 @@ private final class EventTapController: NSObject {
     }
 }
 
-private struct ModifierStateTracker {
-    private var fnIsActive = false
+struct ModifierStateTracker {
+    private(set) var activeFlags: CGEventFlags = []
 
-    mutating func update(with modifiers: ModifierSet) {
-        fnIsActive = modifiers.contains(.fn)
-    }
-
-    func effectiveModifiers(for eventModifiers: ModifierSet) -> ModifierSet {
-        var modifiers = eventModifiers
-        if fnIsActive {
-            modifiers.insert(.fn)
-        }
-        return modifiers
+    mutating func update(with flags: CGEventFlags) {
+        activeFlags = KeyboardEventTranslator.sanitizeRelevantFlags(flags)
     }
 
     mutating func reset() {
-        fnIsActive = false
+        activeFlags = []
     }
 }
 
-private struct KeyboardActionExecutor {
-    func execute(_ action: OutputAction, eventMarker: Int64) -> Bool {
-        switch action {
-        case .keyboard(let keyCode, let modifiers, let kind, let isAutorepeat):
-            guard let event = CGEvent(
-                keyboardEventSource: nil,
-                virtualKey: CGKeyCode(keyCode),
-                keyDown: kind == .keyDown
-            ) else {
-                return false
-            }
+struct InjectedKeyEventPayload: Equatable {
+    var targetKeyCode: CGKeyCode
+    var outputFlags: CGEventFlags
+    var isKeyDown: Bool
+    var isAutorepeat: Bool
+}
 
-            event.flags = modifiers.cgEventFlags
-            event.setIntegerValueField(.keyboardEventAutorepeat, value: isAutorepeat ? 1 : 0)
-            event.setIntegerValueField(.eventSourceUserData, value: eventMarker)
-            event.post(tap: .cghidEventTap)
-            return true
+struct KeyboardEventTranslator {
+    static let eventMarker: Int64 = 0x4D594D4143
+
+    func translate(
+        eventType: CGEventType,
+        keyCode: CGKeyCode,
+        eventFlags: CGEventFlags,
+        trackedFlags: CGEventFlags,
+        isAutorepeat: Bool
+    ) -> InjectedKeyEventPayload? {
+        guard eventType == .keyDown || eventType == .keyUp else {
+            return nil
         }
+
+        // Some key events arrive before their modifier flags are fully reflected
+        // on the event itself, so matching merges the event flags with tracked state.
+        let effectiveFlags = Self.effectiveFlags(eventFlags: eventFlags, trackedFlags: trackedFlags)
+        guard effectiveFlags.contains(.maskSecondaryFn),
+              let targetKeyCode = Self.mappedArrowKeyCode(for: keyCode) else {
+            return nil
+        }
+
+        let outputFlags = Self.outputFlags(
+            from: eventFlags,
+            trackedFlags: trackedFlags
+        )
+
+        return InjectedKeyEventPayload(
+            targetKeyCode: targetKeyCode,
+            outputFlags: outputFlags,
+            isKeyDown: eventType == .keyDown,
+            isAutorepeat: isAutorepeat
+        )
+    }
+
+    static func sanitizeRelevantFlags(_ flags: CGEventFlags) -> CGEventFlags {
+        var sanitized: CGEventFlags = []
+
+        if flags.contains(.maskCommand) {
+            sanitized.insert(.maskCommand)
+        }
+        if flags.contains(.maskShift) {
+            sanitized.insert(.maskShift)
+        }
+        if flags.contains(.maskAlternate) {
+            sanitized.insert(.maskAlternate)
+        }
+        if flags.contains(.maskControl) {
+            sanitized.insert(.maskControl)
+        }
+        if flags.contains(.maskSecondaryFn) {
+            sanitized.insert(.maskSecondaryFn)
+        }
+
+        return sanitized
+    }
+
+    static func effectiveFlags(eventFlags: CGEventFlags, trackedFlags: CGEventFlags) -> CGEventFlags {
+        sanitizeRelevantFlags(eventFlags).union(sanitizeRelevantFlags(trackedFlags))
+    }
+
+    static func outputFlags(from eventFlags: CGEventFlags, trackedFlags: CGEventFlags) -> CGEventFlags {
+        // Preserve the original event's raw bits whenever possible. Rebuilding flags
+        // from only the abstract modifier mask breaks shortcuts like control+arrow.
+        var outputFlags = eventFlags.removing(.maskSecondaryFn)
+        let eventRelevantFlags = sanitizeRelevantFlags(eventFlags).removing(.maskSecondaryFn)
+        let trackedRelevantFlags = sanitizeRelevantFlags(trackedFlags).removing(.maskSecondaryFn)
+        let missingRelevantFlags = trackedRelevantFlags.removing(eventRelevantFlags)
+        outputFlags.insert(missingRelevantFlags)
+        return outputFlags
+    }
+
+    private static func mappedArrowKeyCode(for keyCode: CGKeyCode) -> CGKeyCode? {
+        switch Int(keyCode) {
+        case kVK_ANSI_H:
+            return CGKeyCode(kVK_LeftArrow)
+        case kVK_ANSI_J:
+            return CGKeyCode(kVK_DownArrow)
+        case kVK_ANSI_K:
+            return CGKeyCode(kVK_UpArrow)
+        case kVK_ANSI_L:
+            return CGKeyCode(kVK_RightArrow)
+        default:
+            return nil
+        }
+    }
+}
+
+struct KeyboardActionExecutor {
+    func execute(_ payload: InjectedKeyEventPayload, eventMarker: Int64) -> Bool {
+        guard let event = CGEvent(
+            keyboardEventSource: nil,
+            virtualKey: payload.targetKeyCode,
+            keyDown: payload.isKeyDown
+        ) else {
+            return false
+        }
+
+        event.flags.insert(payload.outputFlags)
+        event.setIntegerValueField(.keyboardEventAutorepeat, value: payload.isAutorepeat ? 1 : 0)
+        event.setIntegerValueField(.eventSourceUserData, value: eventMarker)
+        event.post(tap: .cgSessionEventTap)
+        return true
+    }
+}
+
+private extension CGEventFlags {
+    func removing(_ flags: CGEventFlags) -> CGEventFlags {
+        CGEventFlags(rawValue: rawValue & ~flags.rawValue)
+    }
+}
+
+extension CGEvent {
+    var keyboardKeyCode: CGKeyCode {
+        CGKeyCode(getIntegerValueField(.keyboardEventKeycode))
+    }
+
+    var keyboardIsAutorepeat: Bool {
+        getIntegerValueField(.keyboardEventAutorepeat) != 0
+    }
+
+    var eventMarker: Int64 {
+        getIntegerValueField(.eventSourceUserData)
     }
 }

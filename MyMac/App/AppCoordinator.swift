@@ -9,7 +9,6 @@ final class AppCoordinator {
     private let launchAtLoginService: LaunchAtLoginService
     private let keyboardMappingService: KeyboardMappingService
     private let diagnosticsService: DiagnosticsService
-    private let ruleSnapshotFactory: DefaultRuleSnapshotFactory
 
     private var settingsWindowController: NSWindowController?
     private var onboardingWindowController: NSWindowController?
@@ -22,8 +21,7 @@ final class AppCoordinator {
         permissionService: PermissionService,
         launchAtLoginService: LaunchAtLoginService,
         keyboardMappingService: KeyboardMappingService,
-        diagnosticsService: DiagnosticsService,
-        ruleSnapshotFactory: DefaultRuleSnapshotFactory = .init()
+        diagnosticsService: DiagnosticsService
     ) {
         self.appState = appState
         self.settingsStore = settingsStore
@@ -31,7 +29,6 @@ final class AppCoordinator {
         self.launchAtLoginService = launchAtLoginService
         self.keyboardMappingService = keyboardMappingService
         self.diagnosticsService = diagnosticsService
-        self.ruleSnapshotFactory = ruleSnapshotFactory
     }
 
     var isLaunchAtLoginToggleOn: Bool {
@@ -174,10 +171,6 @@ final class AppCoordinator {
         appState.launchAtLoginStatus = launchAtLoginService.currentStatus()
     }
 
-    private func makeCurrentRuleSnapshot() -> RuleSnapshot {
-        ruleSnapshotFactory.makeSnapshot(isEnabled: appState.isKeyboardMappingEnabled)
-    }
-
     private func synchronizePermissionsAndRuntimeState(
         trigger: PermissionSynchronizationTrigger,
         permissions: PermissionsSnapshot? = nil
@@ -213,17 +206,16 @@ final class AppCoordinator {
             return
         }
 
-        let snapshot = makeCurrentRuleSnapshot()
         let currentStatus = await keyboardMappingService.currentStatus()
 
         switch currentStatus {
         case .running:
-            await keyboardMappingService.reloadRules(snapshot)
+            break
         case .tapDisabled, .failed:
             await keyboardMappingService.stop()
-            await keyboardMappingService.start(with: snapshot)
+            await keyboardMappingService.start()
         default:
-            await keyboardMappingService.start(with: snapshot)
+            await keyboardMappingService.start()
         }
 
         appState.runtimeStatus = await keyboardMappingService.currentStatus()

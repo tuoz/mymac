@@ -14,6 +14,7 @@
 
 - [software-requirements.md](/Users/tuoz/Workspace/projects/mymac/docs/software-requirements.md)
 - [technical-design.md](/Users/tuoz/Workspace/projects/mymac/docs/technical-design.md)
+- [fn-hjkl-debugging-lessons.md](/Users/tuoz/Workspace/projects/MyMac/docs/fn-hjkl-debugging-lessons.md)
 
 ## 2. 当前阶段结论
 
@@ -91,13 +92,13 @@
 
 - `EventTapController`
 - `ModifierStateTracker`
+- `KeyboardEventTranslator`
 - `KeyboardActionExecutor`
 - `CGEvent` / `CGEventFlags` 转换辅助
 
 关键文件：
 
 - [KeyboardMappingService.swift](/Users/tuoz/Workspace/projects/mymac/MyMac/Core/EventSystem/KeyboardMappingService.swift)
-- [InputModels.swift](/Users/tuoz/Workspace/projects/mymac/MyMac/Core/Domain/InputModels.swift)
 
 ### 3.4 映射与注入逻辑
 
@@ -114,11 +115,14 @@
 - 保留 autorepeat 标志
 - 为自注入事件写入 `eventMarker`
 - tap 回调会过滤带相同 marker 的事件，避免递归映射
+- `flagsChanged` 会跟踪当前活跃修饰键
+- 匹配时会使用 `sanitize(event.flags) ∪ sanitize(trackedFlags)`
+- 输出时以原始 `event.flags` 为基础，只去掉 `fn`，再补齐 tracker 中缺失的相关修饰键，避免丢失 raw flags
 
 关键文件：
 
-- [KeyMappingEngine.swift](/Users/tuoz/Workspace/projects/mymac/MyMac/Core/EventSystem/KeyMappingEngine.swift)
-- [DefaultRuleSnapshotFactory.swift](/Users/tuoz/Workspace/projects/mymac/MyMac/Core/EventSystem/DefaultRuleSnapshotFactory.swift)
+- [KeyboardMappingService.swift](/Users/tuoz/Workspace/projects/mymac/MyMac/Core/EventSystem/KeyboardMappingService.swift)
+- [fn-hjkl-debugging-lessons.md](/Users/tuoz/Workspace/projects/MyMac/docs/fn-hjkl-debugging-lessons.md)
 
 ### 3.5 UI 联动
 
