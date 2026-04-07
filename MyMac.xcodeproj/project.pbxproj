@@ -31,6 +31,7 @@
 		A10000000000000000000016 /* KeyMappingEngineTests.swift in Sources */ = {isa = PBXBuildFile; fileRef = B10000000000000000000016 /* KeyMappingEngineTests.swift */; };
 		A10000000000000000000017 /* SettingsStoreTests.swift in Sources */ = {isa = PBXBuildFile; fileRef = B10000000000000000000017 /* SettingsStoreTests.swift */; };
 		A10000000000000000000018 /* LaunchAtLoginStatusMapperTests.swift in Sources */ = {isa = PBXBuildFile; fileRef = B10000000000000000000018 /* LaunchAtLoginStatusMapperTests.swift */; };
+		A10000000000000000000019 /* Assets.xcassets in Resources */ = {isa = PBXBuildFile; fileRef = B1000000000000000000001B /* Assets.xcassets */; };
 /* End PBXBuildFile section */
 
 /* Begin PBXContainerItemProxy section */
@@ -70,6 +71,7 @@
 		B10000000000000000000018 /* LaunchAtLoginStatusMapperTests.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = LaunchAtLoginStatusMapperTests.swift; sourceTree = "<group>"; };
 		B10000000000000000000019 /* MyMac.app */ = {isa = PBXFileReference; explicitFileType = wrapper.application; path = MyMac.app; sourceTree = BUILT_PRODUCTS_DIR; };
 		B1000000000000000000001A /* MyMacTests.xctest */ = {isa = PBXFileReference; explicitFileType = wrapper.cfbundle; path = MyMacTests.xctest; sourceTree = BUILT_PRODUCTS_DIR; };
+		B1000000000000000000001B /* Assets.xcassets */ = {isa = PBXFileReference; lastKnownFileType = folder.assetcatalog; path = Assets.xcassets; sourceTree = "<group>"; };
 /* End PBXFileReference section */
 
 /* Begin PBXFrameworksBuildPhase section */
@@ -89,6 +91,17 @@
 		};
 /* End PBXFrameworksBuildPhase section */
 
+/* Begin PBXResourcesBuildPhase section */
+		A80000000000000000000001 /* Resources */ = {
+			isa = PBXResourcesBuildPhase;
+			buildActionMask = 2147483647;
+			files = (
+				A10000000000000000000019 /* Assets.xcassets in Resources */,
+			);
+			runOnlyForDeploymentPostprocessing = 0;
+		};
+/* End PBXResourcesBuildPhase section */
+
 /* Begin PBXGroup section */
 		A70000000000000000000001 = {
 			isa = PBXGroup;
@@ -106,6 +119,7 @@
 				A70000000000000000000003 /* App */,
 				A70000000000000000000004 /* Features */,
 				A70000000000000000000008 /* Core */,
+				B1000000000000000000001B /* Assets.xcassets */,
 			);
 			path = MyMac;
 			sourceTree = "<group>";
@@ -243,6 +257,7 @@
 			buildPhases = (
 				A60000000000000000000001 /* Frameworks */,
 				AA0000000000000000000001 /* Sources */,
+				A80000000000000000000001 /* Resources */,
 			);
 			buildRules = (
 			);
@@ -399,6 +414,7 @@
 		AB0000000000000000000003 /* Debug */ = {
 			isa = XCBuildConfiguration;
 			buildSettings = {
+				ASSETCATALOG_COMPILER_APPICON_NAME = AppIcon;
 				CODE_SIGN_IDENTITY = "Apple Development";
 				CODE_SIGN_STYLE = Automatic;
 				CURRENT_PROJECT_VERSION = 1;
@@ -424,6 +440,7 @@
 		AB0000000000000000000004 /* Release */ = {
 			isa = XCBuildConfiguration;
 			buildSettings = {
+				ASSETCATALOG_COMPILER_APPICON_NAME = AppIcon;
 				CODE_SIGN_IDENTITY = "Apple Development";
 				CODE_SIGN_STYLE = Automatic;
 				CURRENT_PROJECT_VERSION = 1;
