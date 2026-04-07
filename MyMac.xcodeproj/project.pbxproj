@@ -1,0 +1,508 @@
+// !$*UTF8*$!
+{
+	archiveVersion = 1;
+	classes = {
+	};
+	objectVersion = 56;
+	objects = {
+
+/* Begin PBXBuildFile section */
+		A10000000000000000000001 /* AppBootstrap.swift in Sources */ = {isa = PBXBuildFile; fileRef = B10000000000000000000001 /* AppBootstrap.swift */; };
+		A10000000000000000000002 /* AppDelegate.swift in Sources */ = {isa = PBXBuildFile; fileRef = B10000000000000000000002 /* AppDelegate.swift */; };
+		A10000000000000000000003 /* AppState.swift in Sources */ = {isa = PBXBuildFile; fileRef = B10000000000000000000003 /* AppState.swift */; };
+		A10000000000000000000004 /* AppCoordinator.swift in Sources */ = {isa = PBXBuildFile; fileRef = B10000000000000000000004 /* AppCoordinator.swift */; };
+		A10000000000000000000005 /* MyMacApp.swift in Sources */ = {isa = PBXBuildFile; fileRef = B10000000000000000000005 /* MyMacApp.swift */; };
+		A10000000000000000000006 /* MenuBarContentView.swift in Sources */ = {isa = PBXBuildFile; fileRef = B10000000000000000000006 /* MenuBarContentView.swift */; };
+		A10000000000000000000007 /* SettingsView.swift in Sources */ = {isa = PBXBuildFile; fileRef = B10000000000000000000007 /* SettingsView.swift */; };
+		A10000000000000000000008 /* OnboardingView.swift in Sources */ = {isa = PBXBuildFile; fileRef = B10000000000000000000008 /* OnboardingView.swift */; };
+		A10000000000000000000009 /* PermissionModels.swift in Sources */ = {isa = PBXBuildFile; fileRef = B10000000000000000000009 /* PermissionModels.swift */; };
+		A1000000000000000000000A /* LaunchAtLoginModels.swift in Sources */ = {isa = PBXBuildFile; fileRef = B1000000000000000000000A /* LaunchAtLoginModels.swift */; };
+		A1000000000000000000000B /* RuntimeStatus.swift in Sources */ = {isa = PBXBuildFile; fileRef = B1000000000000000000000B /* RuntimeStatus.swift */; };
+		A1000000000000000000000C /* InputModels.swift in Sources */ = {isa = PBXBuildFile; fileRef = B1000000000000000000000C /* InputModels.swift */; };
+		A1000000000000000000000D /* AppAction.swift in Sources */ = {isa = PBXBuildFile; fileRef = B1000000000000000000000D /* AppAction.swift */; };
+		A1000000000000000000000E /* PermissionService.swift in Sources */ = {isa = PBXBuildFile; fileRef = B1000000000000000000000E /* PermissionService.swift */; };
+		A1000000000000000000000F /* LaunchAtLoginService.swift in Sources */ = {isa = PBXBuildFile; fileRef = B1000000000000000000000F /* LaunchAtLoginService.swift */; };
+		A10000000000000000000010 /* DiagnosticsService.swift in Sources */ = {isa = PBXBuildFile; fileRef = B10000000000000000000010 /* DiagnosticsService.swift */; };
+		A10000000000000000000011 /* KeyboardMappingService.swift in Sources */ = {isa = PBXBuildFile; fileRef = B10000000000000000000011 /* KeyboardMappingService.swift */; };
+		A10000000000000000000012 /* KeyMappingEngine.swift in Sources */ = {isa = PBXBuildFile; fileRef = B10000000000000000000012 /* KeyMappingEngine.swift */; };
+		A10000000000000000000013 /* DefaultRuleSnapshotFactory.swift in Sources */ = {isa = PBXBuildFile; fileRef = B10000000000000000000013 /* DefaultRuleSnapshotFactory.swift */; };
+		A10000000000000000000014 /* SettingsStore.swift in Sources */ = {isa = PBXBuildFile; fileRef = B10000000000000000000014 /* SettingsStore.swift */; };
+		A10000000000000000000015 /* DefaultRuleSnapshotFactoryTests.swift in Sources */ = {isa = PBXBuildFile; fileRef = B10000000000000000000015 /* DefaultRuleSnapshotFactoryTests.swift */; };
+		A10000000000000000000016 /* KeyMappingEngineTests.swift in Sources */ = {isa = PBXBuildFile; fileRef = B10000000000000000000016 /* KeyMappingEngineTests.swift */; };
+		A10000000000000000000017 /* SettingsStoreTests.swift in Sources */ = {isa = PBXBuildFile; fileRef = B10000000000000000000017 /* SettingsStoreTests.swift */; };
+		A10000000000000000000018 /* LaunchAtLoginStatusMapperTests.swift in Sources */ = {isa = PBXBuildFile; fileRef = B10000000000000000000018 /* LaunchAtLoginStatusMapperTests.swift */; };
+/* End PBXBuildFile section */
+
+/* Begin PBXContainerItemProxy section */
+		A30000000000000000000001 /* PBXContainerItemProxy */ = {
+			isa = PBXContainerItemProxy;
+			containerPortal = A50000000000000000000001 /* Project object */;
+			proxyType = 1;
+			remoteGlobalIDString = A40000000000000000000001;
+			remoteInfo = MyMac;
+		};
+/* End PBXContainerItemProxy section */
+
+/* Begin PBXFileReference section */
+		B10000000000000000000001 /* AppBootstrap.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = AppBootstrap.swift; sourceTree = "<group>"; };
+		B10000000000000000000002 /* AppDelegate.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = AppDelegate.swift; sourceTree = "<group>"; };
+		B10000000000000000000003 /* AppState.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = AppState.swift; sourceTree = "<group>"; };
+		B10000000000000000000004 /* AppCoordinator.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = AppCoordinator.swift; sourceTree = "<group>"; };
+		B10000000000000000000005 /* MyMacApp.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = MyMacApp.swift; sourceTree = "<group>"; };
+		B10000000000000000000006 /* MenuBarContentView.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = MenuBarContentView.swift; sourceTree = "<group>"; };
+		B10000000000000000000007 /* SettingsView.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = SettingsView.swift; sourceTree = "<group>"; };
+		B10000000000000000000008 /* OnboardingView.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = OnboardingView.swift; sourceTree = "<group>"; };
+		B10000000000000000000009 /* PermissionModels.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = PermissionModels.swift; sourceTree = "<group>"; };
+		B1000000000000000000000A /* LaunchAtLoginModels.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = LaunchAtLoginModels.swift; sourceTree = "<group>"; };
+		B1000000000000000000000B /* RuntimeStatus.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = RuntimeStatus.swift; sourceTree = "<group>"; };
+		B1000000000000000000000C /* InputModels.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = InputModels.swift; sourceTree = "<group>"; };
+		B1000000000000000000000D /* AppAction.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = AppAction.swift; sourceTree = "<group>"; };
+		B1000000000000000000000E /* PermissionService.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = PermissionService.swift; sourceTree = "<group>"; };
+		B1000000000000000000000F /* LaunchAtLoginService.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = LaunchAtLoginService.swift; sourceTree = "<group>"; };
+		B10000000000000000000010 /* DiagnosticsService.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = DiagnosticsService.swift; sourceTree = "<group>"; };
+		B10000000000000000000011 /* KeyboardMappingService.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = KeyboardMappingService.swift; sourceTree = "<group>"; };
+		B10000000000000000000012 /* KeyMappingEngine.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = KeyMappingEngine.swift; sourceTree = "<group>"; };
+		B10000000000000000000013 /* DefaultRuleSnapshotFactory.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = DefaultRuleSnapshotFactory.swift; sourceTree = "<group>"; };
+		B10000000000000000000014 /* SettingsStore.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = SettingsStore.swift; sourceTree = "<group>"; };
+		B10000000000000000000015 /* DefaultRuleSnapshotFactoryTests.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = DefaultRuleSnapshotFactoryTests.swift; sourceTree = "<group>"; };
+		B10000000000000000000016 /* KeyMappingEngineTests.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = KeyMappingEngineTests.swift; sourceTree = "<group>"; };
+		B10000000000000000000017 /* SettingsStoreTests.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = SettingsStoreTests.swift; sourceTree = "<group>"; };
+		B10000000000000000000018 /* LaunchAtLoginStatusMapperTests.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = LaunchAtLoginStatusMapperTests.swift; sourceTree = "<group>"; };
+		B10000000000000000000019 /* MyMac.app */ = {isa = PBXFileReference; explicitFileType = wrapper.application; path = MyMac.app; sourceTree = BUILT_PRODUCTS_DIR; };
+		B1000000000000000000001A /* MyMacTests.xctest */ = {isa = PBXFileReference; explicitFileType = wrapper.cfbundle; path = MyMacTests.xctest; sourceTree = BUILT_PRODUCTS_DIR; };
+/* End PBXFileReference section */
+
+/* Begin PBXFrameworksBuildPhase section */
+		A60000000000000000000001 /* Frameworks */ = {
+			isa = PBXFrameworksBuildPhase;
+			buildActionMask = 2147483647;
+			files = (
+			);
+			runOnlyForDeploymentPostprocessing = 0;
+		};
+		A60000000000000000000002 /* Frameworks */ = {
+			isa = PBXFrameworksBuildPhase;
+			buildActionMask = 2147483647;
+			files = (
+			);
+			runOnlyForDeploymentPostprocessing = 0;
+		};
+/* End PBXFrameworksBuildPhase section */
+
+/* Begin PBXGroup section */
+		A70000000000000000000001 = {
+			isa = PBXGroup;
+			children = (
+				A70000000000000000000002 /* MyMac */,
+				A7000000000000000000000A /* MyMacTests */,
+				A7000000000000000000000B /* Products */,
+				A7000000000000000000000C /* docs */,
+			);
+			sourceTree = "<group>";
+		};
+		A70000000000000000000002 /* MyMac */ = {
+			isa = PBXGroup;
+			children = (
+				A70000000000000000000003 /* App */,
+				A70000000000000000000004 /* Features */,
+				A70000000000000000000008 /* Core */,
+			);
+			path = MyMac;
+			sourceTree = "<group>";
+		};
+		A70000000000000000000003 /* App */ = {
+			isa = PBXGroup;
+			children = (
+				B10000000000000000000001 /* AppBootstrap.swift */,
+				B10000000000000000000002 /* AppDelegate.swift */,
+				B10000000000000000000003 /* AppState.swift */,
+				B10000000000000000000004 /* AppCoordinator.swift */,
+				B10000000000000000000005 /* MyMacApp.swift */,
+			);
+			path = App;
+			sourceTree = "<group>";
+		};
+		A70000000000000000000004 /* Features */ = {
+			isa = PBXGroup;
+			children = (
+				A70000000000000000000005 /* MenuBar */,
+				A70000000000000000000006 /* Settings */,
+				A70000000000000000000007 /* Onboarding */,
+			);
+			path = Features;
+			sourceTree = "<group>";
+		};
+		A70000000000000000000005 /* MenuBar */ = {
+			isa = PBXGroup;
+			children = (
+				B10000000000000000000006 /* MenuBarContentView.swift */,
+			);
+			path = MenuBar;
+			sourceTree = "<group>";
+		};
+		A70000000000000000000006 /* Settings */ = {
+			isa = PBXGroup;
+			children = (
+				B10000000000000000000007 /* SettingsView.swift */,
+			);
+			path = Settings;
+			sourceTree = "<group>";
+		};
+		A70000000000000000000007 /* Onboarding */ = {
+			isa = PBXGroup;
+			children = (
+				B10000000000000000000008 /* OnboardingView.swift */,
+			);
+			path = Onboarding;
+			sourceTree = "<group>";
+		};
+		A70000000000000000000008 /* Core */ = {
+			isa = PBXGroup;
+			children = (
+				A70000000000000000000009 /* Domain */,
+				A7000000000000000000000D /* Services */,
+				A7000000000000000000000E /* EventSystem */,
+				A7000000000000000000000F /* Persistence */,
+			);
+			path = Core;
+			sourceTree = "<group>";
+		};
+		A70000000000000000000009 /* Domain */ = {
+			isa = PBXGroup;
+			children = (
+				B10000000000000000000009 /* PermissionModels.swift */,
+				B1000000000000000000000A /* LaunchAtLoginModels.swift */,
+				B1000000000000000000000B /* RuntimeStatus.swift */,
+				B1000000000000000000000C /* InputModels.swift */,
+				B1000000000000000000000D /* AppAction.swift */,
+			);
+			path = Domain;
+			sourceTree = "<group>";
+		};
+		A7000000000000000000000A /* MyMacTests */ = {
+			isa = PBXGroup;
+			children = (
+				B10000000000000000000015 /* DefaultRuleSnapshotFactoryTests.swift */,
+				B10000000000000000000016 /* KeyMappingEngineTests.swift */,
+				B10000000000000000000017 /* SettingsStoreTests.swift */,
+				B10000000000000000000018 /* LaunchAtLoginStatusMapperTests.swift */,
+			);
+			path = MyMacTests;
+			sourceTree = "<group>";
+		};
+		A7000000000000000000000B /* Products */ = {
+			isa = PBXGroup;
+			children = (
+				B10000000000000000000019 /* MyMac.app */,
+				B1000000000000000000001A /* MyMacTests.xctest */,
+			);
+			name = Products;
+			sourceTree = "<group>";
+		};
+		A7000000000000000000000C /* docs */ = {
+			isa = PBXGroup;
+			children = (
+			);
+			path = docs;
+			sourceTree = "<group>";
+		};
+		A7000000000000000000000D /* Services */ = {
+			isa = PBXGroup;
+			children = (
+				B1000000000000000000000E /* PermissionService.swift */,
+				B1000000000000000000000F /* LaunchAtLoginService.swift */,
+				B10000000000000000000010 /* DiagnosticsService.swift */,
+			);
+			path = Services;
+			sourceTree = "<group>";
+		};
+		A7000000000000000000000E /* EventSystem */ = {
+			isa = PBXGroup;
+			children = (
+				B10000000000000000000011 /* KeyboardMappingService.swift */,
+				B10000000000000000000012 /* KeyMappingEngine.swift */,
+				B10000000000000000000013 /* DefaultRuleSnapshotFactory.swift */,
+			);
+			path = EventSystem;
+			sourceTree = "<group>";
+		};
+		A7000000000000000000000F /* Persistence */ = {
+			isa = PBXGroup;
+			children = (
+				B10000000000000000000014 /* SettingsStore.swift */,
+			);
+			path = Persistence;
+			sourceTree = "<group>";
+		};
+/* End PBXGroup section */
+
+/* Begin PBXNativeTarget section */
+		A40000000000000000000001 /* MyMac */ = {
+			isa = PBXNativeTarget;
+			buildConfigurationList = A90000000000000000000001 /* Build configuration list for PBXNativeTarget "MyMac" */;
+			buildPhases = (
+				A60000000000000000000001 /* Frameworks */,
+				AA0000000000000000000001 /* Sources */,
+			);
+			buildRules = (
+			);
+			dependencies = (
+			);
+			name = MyMac;
+			packageProductDependencies = (
+			);
+			productName = MyMac;
+			productReference = B10000000000000000000019 /* MyMac.app */;
+			productType = "com.apple.product-type.application";
+		};
+		A40000000000000000000002 /* MyMacTests */ = {
+			isa = PBXNativeTarget;
+			buildConfigurationList = A90000000000000000000002 /* Build configuration list for PBXNativeTarget "MyMacTests" */;
+			buildPhases = (
+				A60000000000000000000002 /* Frameworks */,
+				AA0000000000000000000002 /* Sources */,
+			);
+			buildRules = (
+			);
+			dependencies = (
+				A20000000000000000000001 /* PBXTargetDependency */,
+			);
+			name = MyMacTests;
+			packageProductDependencies = (
+			);
+			productName = MyMacTests;
+			productReference = B1000000000000000000001A /* MyMacTests.xctest */;
+			productType = "com.apple.product-type.bundle.unit-test";
+		};
+/* End PBXNativeTarget section */
+
+/* Begin PBXProject section */
+		A50000000000000000000001 /* Project object */ = {
+			isa = PBXProject;
+			attributes = {
+				BuildIndependentTargetsInParallel = 1;
+				LastSwiftUpdateCheck = 1600;
+				LastUpgradeCheck = 1600;
+				TargetAttributes = {
+					A40000000000000000000001 = {
+						CreatedOnToolsVersion = 16.0;
+					};
+					A40000000000000000000002 = {
+						CreatedOnToolsVersion = 16.0;
+						TestTargetID = A40000000000000000000001;
+					};
+				};
+			};
+			buildConfigurationList = A90000000000000000000003 /* Build configuration list for PBXProject "MyMac" */;
+			compatibilityVersion = "Xcode 16.0";
+			developmentRegion = en;
+			hasScannedForEncodings = 0;
+			knownRegions = (
+				en,
+				Base,
+			);
+			mainGroup = A70000000000000000000001;
+			productRefGroup = A7000000000000000000000B /* Products */;
+			projectDirPath = "";
+			projectRoot = "";
+			targets = (
+				A40000000000000000000001 /* MyMac */,
+				A40000000000000000000002 /* MyMacTests */,
+			);
+		};
+/* End PBXProject section */
+
+/* Begin PBXSourcesBuildPhase section */
+		AA0000000000000000000001 /* Sources */ = {
+			isa = PBXSourcesBuildPhase;
+			buildActionMask = 2147483647;
+			files = (
+				A10000000000000000000001 /* AppBootstrap.swift in Sources */,
+				A10000000000000000000002 /* AppDelegate.swift in Sources */,
+				A10000000000000000000003 /* AppState.swift in Sources */,
+				A10000000000000000000004 /* AppCoordinator.swift in Sources */,
+				A10000000000000000000005 /* MyMacApp.swift in Sources */,
+				A10000000000000000000006 /* MenuBarContentView.swift in Sources */,
+				A10000000000000000000007 /* SettingsView.swift in Sources */,
+				A10000000000000000000008 /* OnboardingView.swift in Sources */,
+				A10000000000000000000009 /* PermissionModels.swift in Sources */,
+				A1000000000000000000000A /* LaunchAtLoginModels.swift in Sources */,
+				A1000000000000000000000B /* RuntimeStatus.swift in Sources */,
+				A1000000000000000000000C /* InputModels.swift in Sources */,
+				A1000000000000000000000D /* AppAction.swift in Sources */,
+				A1000000000000000000000E /* PermissionService.swift in Sources */,
+				A1000000000000000000000F /* LaunchAtLoginService.swift in Sources */,
+				A10000000000000000000010 /* DiagnosticsService.swift in Sources */,
+				A10000000000000000000011 /* KeyboardMappingService.swift in Sources */,
+				A10000000000000000000012 /* KeyMappingEngine.swift in Sources */,
+				A10000000000000000000013 /* DefaultRuleSnapshotFactory.swift in Sources */,
+				A10000000000000000000014 /* SettingsStore.swift in Sources */,
+			);
+			runOnlyForDeploymentPostprocessing = 0;
+		};
+		AA0000000000000000000002 /* Sources */ = {
+			isa = PBXSourcesBuildPhase;
+			buildActionMask = 2147483647;
+			files = (
+				A10000000000000000000015 /* DefaultRuleSnapshotFactoryTests.swift in Sources */,
+				A10000000000000000000016 /* KeyMappingEngineTests.swift in Sources */,
+				A10000000000000000000017 /* SettingsStoreTests.swift in Sources */,
+				A10000000000000000000018 /* LaunchAtLoginStatusMapperTests.swift in Sources */,
+			);
+			runOnlyForDeploymentPostprocessing = 0;
+		};
+/* End PBXSourcesBuildPhase section */
+
+/* Begin PBXTargetDependency section */
+		A20000000000000000000001 /* PBXTargetDependency */ = {
+			isa = PBXTargetDependency;
+			target = A40000000000000000000001 /* MyMac */;
+			targetProxy = A30000000000000000000001 /* PBXContainerItemProxy */;
+		};
+/* End PBXTargetDependency section */
+
+/* Begin XCBuildConfiguration section */
+		AB0000000000000000000001 /* Debug */ = {
+			isa = XCBuildConfiguration;
+			buildSettings = {
+				ALWAYS_SEARCH_USER_PATHS = NO;
+				CLANG_ENABLE_MODULES = YES;
+				CLANG_ENABLE_OBJC_ARC = YES;
+				COPY_PHASE_STRIP = NO;
+				DEBUG_INFORMATION_FORMAT = dwarf;
+				GCC_C_LANGUAGE_STANDARD = gnu17;
+				MACOSX_DEPLOYMENT_TARGET = 14.0;
+				SDKROOT = macosx;
+				SWIFT_ACTIVE_COMPILATION_CONDITIONS = DEBUG;
+				SWIFT_OPTIMIZATION_LEVEL = "-Onone";
+				SWIFT_VERSION = 6.0;
+			};
+			name = Debug;
+		};
+		AB0000000000000000000002 /* Release */ = {
+			isa = XCBuildConfiguration;
+			buildSettings = {
+				ALWAYS_SEARCH_USER_PATHS = NO;
+				CLANG_ENABLE_MODULES = YES;
+				CLANG_ENABLE_OBJC_ARC = YES;
+				COPY_PHASE_STRIP = NO;
+				DEBUG_INFORMATION_FORMAT = "dwarf-with-dsym";
+				GCC_C_LANGUAGE_STANDARD = gnu17;
+				MACOSX_DEPLOYMENT_TARGET = 14.0;
+				SDKROOT = macosx;
+				SWIFT_COMPILATION_MODE = wholemodule;
+				SWIFT_OPTIMIZATION_LEVEL = "-O";
+				SWIFT_VERSION = 6.0;
+			};
+			name = Release;
+		};
+		AB0000000000000000000003 /* Debug */ = {
+			isa = XCBuildConfiguration;
+			buildSettings = {
+				CODE_SIGN_STYLE = Automatic;
+				CURRENT_PROJECT_VERSION = 1;
+				DEFINES_MODULE = YES;
+				ENABLE_APP_SANDBOX = NO;
+				GENERATE_INFOPLIST_FILE = YES;
+				INFOPLIST_KEY_CFBundleDisplayName = MyMac;
+				INFOPLIST_KEY_LSUIElement = YES;
+				MACOSX_DEPLOYMENT_TARGET = 14.0;
+				MARKETING_VERSION = 1.0;
+				PRODUCT_BUNDLE_IDENTIFIER = com.local.mymac;
+				PRODUCT_NAME = "$(TARGET_NAME)";
+				SDKROOT = macosx;
+				SWIFT_EMIT_LOC_STRINGS = NO;
+				SWIFT_STRICT_CONCURRENCY = complete;
+				SWIFT_VERSION = 6.0;
+			};
+			name = Debug;
+		};
+		AB0000000000000000000004 /* Release */ = {
+			isa = XCBuildConfiguration;
+			buildSettings = {
+				CODE_SIGN_STYLE = Automatic;
+				CURRENT_PROJECT_VERSION = 1;
+				DEFINES_MODULE = YES;
+				ENABLE_APP_SANDBOX = NO;
+				GENERATE_INFOPLIST_FILE = YES;
+				INFOPLIST_KEY_CFBundleDisplayName = MyMac;
+				INFOPLIST_KEY_LSUIElement = YES;
+				MACOSX_DEPLOYMENT_TARGET = 14.0;
+				MARKETING_VERSION = 1.0;
+				PRODUCT_BUNDLE_IDENTIFIER = com.local.mymac;
+				PRODUCT_NAME = "$(TARGET_NAME)";
+				SDKROOT = macosx;
+				SWIFT_EMIT_LOC_STRINGS = NO;
+				SWIFT_STRICT_CONCURRENCY = complete;
+				SWIFT_VERSION = 6.0;
+			};
+			name = Release;
+		};
+		AB0000000000000000000005 /* Debug */ = {
+			isa = XCBuildConfiguration;
+			buildSettings = {
+				BUNDLE_LOADER = "";
+				CODE_SIGN_STYLE = Automatic;
+				GENERATE_INFOPLIST_FILE = YES;
+				MACOSX_DEPLOYMENT_TARGET = 14.0;
+				PRODUCT_BUNDLE_IDENTIFIER = com.local.mymacTests;
+				PRODUCT_NAME = "$(TARGET_NAME)";
+				SDKROOT = macosx;
+				SWIFT_EMIT_LOC_STRINGS = NO;
+				SWIFT_VERSION = 6.0;
+				TEST_HOST = "";
+				TEST_TARGET_NAME = MyMac;
+			};
+			name = Debug;
+		};
+		AB0000000000000000000006 /* Release */ = {
+			isa = XCBuildConfiguration;
+			buildSettings = {
+				BUNDLE_LOADER = "";
+				CODE_SIGN_STYLE = Automatic;
+				GENERATE_INFOPLIST_FILE = YES;
+				MACOSX_DEPLOYMENT_TARGET = 14.0;
+				PRODUCT_BUNDLE_IDENTIFIER = com.local.mymacTests;
+				PRODUCT_NAME = "$(TARGET_NAME)";
+				SDKROOT = macosx;
+				SWIFT_EMIT_LOC_STRINGS = NO;
+				SWIFT_VERSION = 6.0;
+				TEST_HOST = "";
+				TEST_TARGET_NAME = MyMac;
+			};
+			name = Release;
+		};
+/* End XCBuildConfiguration section */
+
+/* Begin XCConfigurationList section */
+		A90000000000000000000001 /* Build configuration list for PBXNativeTarget "MyMac" */ = {
+			isa = XCConfigurationList;
+			buildConfigurations = (
+				AB0000000000000000000003 /* Debug */,
+				AB0000000000000000000004 /* Release */,
+			);
+			defaultConfigurationIsVisible = 0;
+			defaultConfigurationName = Release;
+		};
+		A90000000000000000000002 /* Build configuration list for PBXNativeTarget "MyMacTests" */ = {
+			isa = XCConfigurationList;
+			buildConfigurations = (
+				AB0000000000000000000005 /* Debug */,
+				AB0000000000000000000006 /* Release */,
+			);
+			defaultConfigurationIsVisible = 0;
+			defaultConfigurationName = Release;
+		};
+		A90000000000000000000003 /* Build configuration list for PBXProject "MyMac" */ = {
+			isa = XCConfigurationList;
+			buildConfigurations = (
+				AB0000000000000000000001 /* Debug */,
+				AB0000000000000000000002 /* Release */,
+			);
+			defaultConfigurationIsVisible = 0;
+			defaultConfigurationName = Release;
+		};
+/* End XCConfigurationList section */
+	};
+	rootObject = A50000000000000000000001 /* Project object */;
+}
