@@ -2,7 +2,7 @@
 
 ## 1. 文档目标
 
-本文档基于 [software-requirements.md](/Users/tuoz/Workspace/projects/mymac/docs/software-requirements.md) ，给出该 macOS 后台快捷键工具的技术实现方案，重点覆盖：
+本文档基于 [software-requirements.md](./software-requirements.md) ，给出该 macOS 后台快捷键工具的技术实现方案，重点覆盖：
 
 - 系统级按键监听与事件注入方案
 - `Fn + H/J/K/L` 到方向键映射的关键实现
@@ -253,7 +253,7 @@ event tap 回调必须满足：
 说明：
 
 - 当前仓库的实际实现已经进一步收敛，不再保留 `KeyEventSnapshot / KeyMappingEngine / RuleSnapshotProvider` 这组独立抽象
-- 现状是由 [KeyboardMappingService.swift](/Users/tuoz/Workspace/projects/MyMac/MyMac/Core/EventSystem/KeyboardMappingService.swift) 直接使用系统 `CGEventFlags` 完成匹配、翻译和注入
+- 现状是由 [KeyboardMappingService.swift](../MyMac/Core/EventSystem/KeyboardMappingService.swift) 直接使用系统 `CGEventFlags` 完成匹配、翻译和注入
 - 本节后续关于 `KeyMappingEngine`、`ModifierSet`、`RuleSnapshot` 的内容保留为早期设计草案，不应再被当作当前代码结构
 
 ### 6.4.3 事件类型

@@ -12,9 +12,9 @@
 
 关联文档：
 
-- [software-requirements.md](/Users/tuoz/Workspace/projects/mymac/docs/software-requirements.md)
-- [technical-design.md](/Users/tuoz/Workspace/projects/mymac/docs/technical-design.md)
-- [fn-hjkl-debugging-lessons.md](/Users/tuoz/Workspace/projects/MyMac/docs/fn-hjkl-debugging-lessons.md)
+- [software-requirements.md](./software-requirements.md)
+- [technical-design.md](./technical-design.md)
+- [fn-hjkl-debugging-lessons.md](./fn-hjkl-debugging-lessons.md)
 
 ## 2. 当前阶段结论
 
@@ -47,9 +47,9 @@
 
 关键文件：
 
-- [MyMacApp.swift](/Users/tuoz/Workspace/projects/mymac/MyMac/App/MyMacApp.swift)
-- [AppCoordinator.swift](/Users/tuoz/Workspace/projects/mymac/MyMac/App/AppCoordinator.swift)
-- [AppState.swift](/Users/tuoz/Workspace/projects/mymac/MyMac/App/AppState.swift)
+- [MyMacApp.swift](../MyMac/App/MyMacApp.swift)
+- [AppCoordinator.swift](../MyMac/App/AppCoordinator.swift)
+- [AppState.swift](../MyMac/App/AppState.swift)
 
 ### 3.2 权限服务
 
@@ -72,7 +72,7 @@
 
 关键文件：
 
-- [PermissionService.swift](/Users/tuoz/Workspace/projects/mymac/MyMac/Core/Services/PermissionService.swift)
+- [PermissionService.swift](../MyMac/Core/Services/PermissionService.swift)
 
 ### 3.3 真实事件链路
 
@@ -98,7 +98,7 @@
 
 关键文件：
 
-- [KeyboardMappingService.swift](/Users/tuoz/Workspace/projects/mymac/MyMac/Core/EventSystem/KeyboardMappingService.swift)
+- [KeyboardMappingService.swift](../MyMac/Core/EventSystem/KeyboardMappingService.swift)
 
 ### 3.4 映射与注入逻辑
 
@@ -121,8 +121,8 @@
 
 关键文件：
 
-- [KeyboardMappingService.swift](/Users/tuoz/Workspace/projects/mymac/MyMac/Core/EventSystem/KeyboardMappingService.swift)
-- [fn-hjkl-debugging-lessons.md](/Users/tuoz/Workspace/projects/MyMac/docs/fn-hjkl-debugging-lessons.md)
+- [KeyboardMappingService.swift](../MyMac/Core/EventSystem/KeyboardMappingService.swift)
+- [fn-hjkl-debugging-lessons.md](./fn-hjkl-debugging-lessons.md)
 
 ### 3.5 UI 联动
 
@@ -139,8 +139,8 @@
 
 关键文件：
 
-- [SettingsView.swift](/Users/tuoz/Workspace/projects/mymac/MyMac/Features/Settings/SettingsView.swift)
-- [OnboardingView.swift](/Users/tuoz/Workspace/projects/mymac/MyMac/Features/Onboarding/OnboardingView.swift)
+- [SettingsView.swift](../MyMac/Features/Settings/SettingsView.swift)
+- [OnboardingView.swift](../MyMac/Features/Onboarding/OnboardingView.swift)
 
 ### 3.6 测试与校验
 
@@ -282,10 +282,10 @@ xcodebuild test -project MyMac.xcodeproj -scheme MyMac -destination 'platform=ma
 
 后续继续开发时，建议优先阅读以下文件：
 
-1. [docs/technical-design.md](/Users/tuoz/Workspace/projects/mymac/docs/technical-design.md)
-2. [AppCoordinator.swift](/Users/tuoz/Workspace/projects/mymac/MyMac/App/AppCoordinator.swift)
-3. [KeyboardMappingService.swift](/Users/tuoz/Workspace/projects/mymac/MyMac/Core/EventSystem/KeyboardMappingService.swift)
-4. [PermissionService.swift](/Users/tuoz/Workspace/projects/mymac/MyMac/Core/Services/PermissionService.swift)
+1. [technical-design.md](./technical-design.md)
+2. [AppCoordinator.swift](../MyMac/App/AppCoordinator.swift)
+3. [KeyboardMappingService.swift](../MyMac/Core/EventSystem/KeyboardMappingService.swift)
+4. [PermissionService.swift](../MyMac/Core/Services/PermissionService.swift)
 
 如果后续任务目标是“继续把功能做稳”，最自然的切入点不是再改架构，而是：
 
