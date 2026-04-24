@@ -134,7 +134,7 @@ if current == nonRomanTarget {
 - 当当前输入源为 `ABC` 时，执行器走 `ascii -> nonroman`，切换到简体拼音
 - 连续 6 次往返切换稳定，无状态漂移
 - `currentNonRoman` 始终保持为 `com.apple.inputmethod.SCIM.ITABC`
-- 单次执行耗时约 `208ms` 到 `238ms`
+- 单次执行耗时约 `208ms` 到 `238ms`（该值包含 `200ms` 的 settle 等待时间；实测 `TISSelectInputSource()` 本身仅耗时约 `2ms–23ms`，`P50 ≈ 7ms`）
 
 ### 4.4 真实 `Caps Lock` 对照结果
 
@@ -242,7 +242,7 @@ CGEventTap → EventTapController.handle()
 
 但“是否可以同步放入 `CGEventTap` 回调”是**集成问题**，不属于当前主行为结论的一部分。
 
-结合本轮实验中普通线程单次切换约 `200ms` 到 `238ms` 的耗时，工程上默认**不应**在 `CGEventTap` 回调内同步执行输入法切换。该量级已经足以显著增加回调阻塞与 tap timeout 风险。更稳妥的设计是：回调内只识别组合键、消费事件并投递“需要切换”的请求，实际输入法切换在回调外异步执行。
+结合本轮实验中 `TISSelectInputSource()` 单次调用实际耗时约 `2ms–23ms`（`P50 ≈ 7ms`），在 `CGEventTap` 回调内同步执行的阻塞风险已显著降低。但需注意：`CGEventTap` 回调应保持轻量，tap timeout 阈值在不同 macOS 版本中有所不同（通常为 `300ms–1s`）。从工程设计上仍推荐异步化方案，但如果实测耗时远低于阈值，同步调用也不属于高风险选择。
 
 ---
 
@@ -253,10 +253,13 @@ CGEventTap → EventTapController.handle()
 | **样本范围有限** | 高 | 当前结论只覆盖 `ABC + 简体拼音` | 后续补做日文、韩文、多 Roman、synthetic Roman mode 样本 |
 | **复杂输入法状态机未覆盖** | 高 | 尚未验证更复杂输入法是否仍与 `Caps Lock` 一致 | 将复杂输入法场景单独列为后续验证项 |
 | **私有 API 变更** | 中 | 系统升级可能修改或移除相关私有 API | 代码中封装隔离；保留公开 API 兜底路径 |
-| **`CGEventTap` 同步调用阻塞风险** | 中 | 当前普通线程单次切换耗时已在约 `200ms` 量级；若在 `CGEventTap` 回调中同步调用，显著增加阻塞与 tap timeout 风险 | 回调内仅识别并消费事件，实际切换异步投递到回调外执行 |
+| **`CGEventTap` 同步调用阻塞风险** | 低 | 实测 `TISSelectInputSource()` 单次调用仅 `2ms–23ms`（`P50 ≈ 7ms`），远低于 tap timeout 阈值（通常 `300ms+`）；同步调用阻塞风险显著降低 | 仍推荐异步化设计，但同步调用已不属于高风险 |
 | **`CGEventTap` 集成方式** | 中 | 当前只验证了行为一致性，尚未验证同步回调内调用是否安全 | 将 event tap 集成单独验证，不与主行为结论混淆 |
 | **App Store 上架** | 低 | 使用私有 API 无法通过 App Store 审核 | 当前为个人自用工具，不考虑上架 |
 | **多 Roman 输入源优先级** | 低 | 当前未覆盖第二 Roman 布局场景 | 若后续需要，可增加用户配置首选 Roman 输入源 |
+| **`TISIsKeyboardLayoutCapsLockSwitched` 导致进程挂起** | 中 | 该函数从独立进程调用时会永久阻塞（120s 超时验证）；`TISIsKeyboardLayoutCapsLockSwitchAllowed` 同样 | 生产代码中**禁止调用**；只需使用 `TISCopyCurrentNonRomanInputSourceForRomanSwitch` 和 `TISIsRomanSwitchEnabled` 即可 |
+
+> **评审补充**（2026-04-24）：独立验证发现关闭系统设置「使用中/英键切换到/离开 ABC」后，`TISIsRomanSwitchEnabled()` 仍返回 `true`，`TISCopyCurrentNonRomanInputSourceForRomanSwitch()` 仍返回正确目标。因此 Fn+Space 输入法切换功能不依赖该系统设置。
 
 ---
 
@@ -284,11 +287,11 @@ void *symbol = dlsym(handle, "TISCopyCurrentNonRomanInputSourceForRomanSwitch");
 
 ### 8.3 线程与集成
 
-普通线程调用已验证可行，但单次切换耗时已在约 `200ms` 量级。因此：
+普通线程调用已验证可行。`TISSelectInputSource()` 耗时实测仅 `2ms–23ms`（`P50 ≈ 7ms`），远低于初始测算的 `200ms`。因此：
 
-- 当前可以确认“这组 API 能完成切换行为”
-- 但“是否适合同步放入 `CGEventTap` 回调”仍需单独验证
-- 从工程设计上，默认不应将这类切换直接放进同步回调；更合理的方式是回调只负责消费事件和投递切换请求，实际切换在回调外异步执行
+- 当前可以确认"这组 API 能完成切换行为"
+- "是否适合同步放入 `CGEventTap` 回调"的风险等级已从「中」降为「低」，但最佳实践仍推荐异步化
+- 从工程设计上，推荐回调只负责消费事件和投递切换请求，实际切换在回调外异步执行
 
 这属于实现集成问题，不影响本报告关于主行为的一致性结论。
 
