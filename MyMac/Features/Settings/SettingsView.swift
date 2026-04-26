@@ -7,17 +7,17 @@ struct SettingsView: View {
         TabView {
             GeneralSettingsView(coordinator: coordinator)
                 .tabItem {
-                    Label("General", systemImage: "gear")
+                    Label("通用", systemImage: "gear")
                 }
 
             PermissionsSettingsView(coordinator: coordinator)
                 .tabItem {
-                    Label("Permissions", systemImage: "lock.shield")
+                    Label("权限", systemImage: "lock.shield")
                 }
 
             AboutSettingsView()
                 .tabItem {
-                    Label("About", systemImage: "info.circle")
+                    Label("关于", systemImage: "info.circle")
                 }
         }
         .padding(20)
@@ -111,9 +111,9 @@ private struct AboutSettingsView: View {
             Text("MyMac")
                 .font(.largeTitle)
                 .bold()
-            Text("A macOS keyboard utility skeleton for Fn + HJKL remapping.")
+            Text("面向 macOS 的后台键盘工具，支持 Fn + H/J/K/L 方向键映射与 Fn + Space 输入法切换。")
                 .foregroundStyle(.secondary)
-            Text("Version \(Bundle.main.object(forInfoDictionaryKey: "CFBundleShortVersionString") as? String ?? "1.0")")
+            Text("版本 \(Bundle.main.object(forInfoDictionaryKey: "CFBundleShortVersionString") as? String ?? "1.0")")
                 .font(.footnote)
                 .foregroundStyle(.secondary)
             Spacer()

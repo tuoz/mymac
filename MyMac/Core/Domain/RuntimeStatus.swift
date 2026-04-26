@@ -10,19 +10,19 @@ enum RuntimeStatus: Sendable, Equatable {
     var displayName: String {
         switch self {
         case .starting:
-            return "Starting"
+            return "启动中"
         case .running:
-            return "Running"
+            return "运行中"
         case .paused:
-            return "Paused"
+            return "已暂停"
         case .missingPermissions:
-            return "Missing Permissions"
+            return "缺少权限"
         case .tapDisabled:
-            return "Tap Disabled"
+            return "监听已停用"
         case .unavailable:
-            return "Unavailable"
+            return "不可用"
         case .failed(let message):
-            return "Failed: \(message)"
+            return "失败：\(message)"
         }
     }
 }

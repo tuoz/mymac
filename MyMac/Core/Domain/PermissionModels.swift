@@ -7,13 +7,13 @@ enum PermissionState: Sendable, Equatable {
     var displayName: String {
         switch self {
         case .unknown:
-            return "Unknown"
+            return "未知"
         case .granted:
-            return "Granted"
+            return "已授权"
         case .denied:
-            return "Denied"
+            return "已拒绝"
         case .requiresUserAction:
-            return "Action Required"
+            return "需要处理"
         }
     }
 }

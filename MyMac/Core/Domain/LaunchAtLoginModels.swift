@@ -7,13 +7,13 @@ enum LaunchAtLoginStatus: Sendable, Equatable {
     var displayName: String {
         switch self {
         case .enabled:
-            return "Enabled"
+            return "已启用"
         case .disabled:
-            return "Disabled"
+            return "已停用"
         case .requiresApproval:
-            return "Requires Approval"
+            return "需要批准"
         case .unavailable:
-            return "Unavailable"
+            return "不可用"
         }
     }
 
