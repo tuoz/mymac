@@ -13,7 +13,11 @@ struct MyMacApp: App {
         let diagnosticsService = LoggerDiagnosticsService()
         let permissionService = DefaultPermissionService()
         let launchAtLoginService = SystemLaunchAtLoginService(diagnosticsService: diagnosticsService)
-        let keyboardMappingService = CGEventTapKeyboardMappingService(diagnosticsService: diagnosticsService)
+        let inputSourceSwitchService = DefaultInputSourceSwitchService(diagnosticsService: diagnosticsService)
+        let keyboardMappingService = CGEventTapKeyboardMappingService(
+            inputSourceSwitchService: inputSourceSwitchService,
+            diagnosticsService: diagnosticsService
+        )
         let appState = AppState(settingsStore: settingsStore)
         let coordinator = AppCoordinator(
             appState: appState,

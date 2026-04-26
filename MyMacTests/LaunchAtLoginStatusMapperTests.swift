@@ -224,6 +224,7 @@ final class AppCoordinatorPermissionFlowTests: XCTestCase {
         defaults.removePersistentDomain(forName: #function)
         defaults.set(true, forKey: SettingsStore.Key.hasCompletedOnboarding)
         defaults.set(false, forKey: SettingsStore.Key.isKeyboardMappingEnabled)
+        defaults.set(false, forKey: SettingsStore.Key.isInputSourceSwitchingEnabled)
 
         let appState = AppState(settingsStore: SettingsStore(userDefaults: defaults))
         let keyboardMappingService = MockKeyboardMappingService(status: .paused)
@@ -244,6 +245,130 @@ final class AppCoordinatorPermissionFlowTests: XCTestCase {
 
         XCTAssertEqual(appState.runtimeStatus, .paused)
         XCTAssertEqual(keyboardMappingService.startCallCount, 0)
+    }
+
+    func testHandleAppLaunchStartsWhenOnlyArrowMappingIsEnabled() async {
+        let defaults = UserDefaults(suiteName: #function)!
+        defaults.removePersistentDomain(forName: #function)
+        defaults.set(true, forKey: SettingsStore.Key.hasCompletedOnboarding)
+        defaults.set(true, forKey: SettingsStore.Key.isKeyboardMappingEnabled)
+        defaults.set(false, forKey: SettingsStore.Key.isInputSourceSwitchingEnabled)
+
+        let appState = AppState(settingsStore: SettingsStore(userDefaults: defaults))
+        let keyboardMappingService = MockKeyboardMappingService(status: .paused)
+        let coordinator = AppCoordinator(
+            appState: appState,
+            settingsStore: SettingsStore(userDefaults: defaults),
+            permissionService: MockPermissionService(
+                refreshResponses: [.init(accessibility: .granted)],
+                requestedSnapshot: .init(accessibility: .granted)
+            ),
+            launchAtLoginService: MockLaunchAtLoginService(),
+            keyboardMappingService: keyboardMappingService,
+            diagnosticsService: MockDiagnosticsService()
+        )
+
+        await coordinator.handleAppLaunch()
+
+        XCTAssertEqual(appState.runtimeStatus, .running)
+        XCTAssertEqual(keyboardMappingService.startCallCount, 1)
+        XCTAssertEqual(
+            keyboardMappingService.configurations.last,
+            KeyboardMappingConfiguration(
+                isArrowKeyMappingEnabled: true,
+                isInputSourceSwitchingEnabled: false
+            )
+        )
+    }
+
+    func testHandleAppLaunchStartsWhenOnlyInputSourceSwitchingIsEnabled() async {
+        let defaults = UserDefaults(suiteName: #function)!
+        defaults.removePersistentDomain(forName: #function)
+        defaults.set(true, forKey: SettingsStore.Key.hasCompletedOnboarding)
+        defaults.set(false, forKey: SettingsStore.Key.isKeyboardMappingEnabled)
+        defaults.set(true, forKey: SettingsStore.Key.isInputSourceSwitchingEnabled)
+
+        let appState = AppState(settingsStore: SettingsStore(userDefaults: defaults))
+        let keyboardMappingService = MockKeyboardMappingService(status: .paused)
+        let coordinator = AppCoordinator(
+            appState: appState,
+            settingsStore: SettingsStore(userDefaults: defaults),
+            permissionService: MockPermissionService(
+                refreshResponses: [.init(accessibility: .granted)],
+                requestedSnapshot: .init(accessibility: .granted)
+            ),
+            launchAtLoginService: MockLaunchAtLoginService(),
+            keyboardMappingService: keyboardMappingService,
+            diagnosticsService: MockDiagnosticsService()
+        )
+
+        await coordinator.handleAppLaunch()
+
+        XCTAssertEqual(appState.runtimeStatus, .running)
+        XCTAssertEqual(keyboardMappingService.startCallCount, 1)
+        XCTAssertEqual(
+            keyboardMappingService.configurations.last,
+            KeyboardMappingConfiguration(
+                isArrowKeyMappingEnabled: false,
+                isInputSourceSwitchingEnabled: true
+            )
+        )
+    }
+
+    func testHandleAppLaunchStopsWhenBothKeyboardFeaturesAreDisabled() async {
+        let defaults = UserDefaults(suiteName: #function)!
+        defaults.removePersistentDomain(forName: #function)
+        defaults.set(true, forKey: SettingsStore.Key.hasCompletedOnboarding)
+        defaults.set(false, forKey: SettingsStore.Key.isKeyboardMappingEnabled)
+        defaults.set(false, forKey: SettingsStore.Key.isInputSourceSwitchingEnabled)
+
+        let appState = AppState(settingsStore: SettingsStore(userDefaults: defaults))
+        let keyboardMappingService = MockKeyboardMappingService(status: .running)
+        let coordinator = AppCoordinator(
+            appState: appState,
+            settingsStore: SettingsStore(userDefaults: defaults),
+            permissionService: MockPermissionService(
+                refreshResponses: [.init(accessibility: .granted)],
+                requestedSnapshot: .init(accessibility: .granted)
+            ),
+            launchAtLoginService: MockLaunchAtLoginService(),
+            keyboardMappingService: keyboardMappingService,
+            diagnosticsService: MockDiagnosticsService()
+        )
+
+        await coordinator.handleAppLaunch()
+
+        XCTAssertEqual(appState.runtimeStatus, .paused)
+        XCTAssertEqual(keyboardMappingService.startCallCount, 0)
+        XCTAssertEqual(keyboardMappingService.stopCallCount, 1)
+    }
+
+    func testHandleAppLaunchDoesNotStartInputSourceSwitchingWithoutAccessibility() async {
+        let defaults = UserDefaults(suiteName: #function)!
+        defaults.removePersistentDomain(forName: #function)
+        defaults.set(true, forKey: SettingsStore.Key.hasCompletedOnboarding)
+        defaults.set(false, forKey: SettingsStore.Key.isKeyboardMappingEnabled)
+        defaults.set(true, forKey: SettingsStore.Key.isInputSourceSwitchingEnabled)
+
+        let appState = AppState(settingsStore: SettingsStore(userDefaults: defaults))
+        let keyboardMappingService = MockKeyboardMappingService(status: .paused)
+        let coordinator = AppCoordinator(
+            appState: appState,
+            settingsStore: SettingsStore(userDefaults: defaults),
+            permissionService: MockPermissionService(
+                refreshResponses: [.init(accessibility: .requiresUserAction)],
+                requestedSnapshot: .init(accessibility: .requiresUserAction)
+            ),
+            launchAtLoginService: MockLaunchAtLoginService(),
+            keyboardMappingService: keyboardMappingService,
+            diagnosticsService: MockDiagnosticsService()
+        )
+
+        await coordinator.handleAppLaunch()
+
+        XCTAssertEqual(appState.runtimeStatus, .missingPermissions)
+        XCTAssertEqual(keyboardMappingService.startCallCount, 0)
+        XCTAssertEqual(keyboardMappingService.stopCallCount, 1)
     }
 
     func testHandleAppLaunchPreservesFailureWhenAccessibilityGrantedButStartFails() async {
@@ -325,11 +450,16 @@ private final class MockKeyboardMappingService: KeyboardMappingService, @uncheck
     private(set) var status: RuntimeStatus
     private(set) var startCallCount = 0
     private(set) var stopCallCount = 0
+    private(set) var configurations: [KeyboardMappingConfiguration] = []
     private let statusAfterStart: RuntimeStatus
 
     init(status: RuntimeStatus, statusAfterStart: RuntimeStatus = .running) {
         self.status = status
         self.statusAfterStart = statusAfterStart
+    }
+
+    func updateConfiguration(_ configuration: KeyboardMappingConfiguration) async {
+        configurations.append(configuration)
     }
 
     func start() async {

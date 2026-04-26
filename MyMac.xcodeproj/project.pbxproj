@@ -23,9 +23,11 @@
 		A10000000000000000000010 /* DiagnosticsService.swift in Sources */ = {isa = PBXBuildFile; fileRef = B10000000000000000000010 /* DiagnosticsService.swift */; };
 		A10000000000000000000011 /* KeyboardMappingService.swift in Sources */ = {isa = PBXBuildFile; fileRef = B10000000000000000000011 /* KeyboardMappingService.swift */; };
 		A10000000000000000000014 /* SettingsStore.swift in Sources */ = {isa = PBXBuildFile; fileRef = B10000000000000000000014 /* SettingsStore.swift */; };
+		A1000000000000000000001C /* InputSourceSwitchService.swift in Sources */ = {isa = PBXBuildFile; fileRef = B1000000000000000000001C /* InputSourceSwitchService.swift */; };
 		A10000000000000000000016 /* KeyboardMappingServiceTests.swift in Sources */ = {isa = PBXBuildFile; fileRef = B10000000000000000000016 /* KeyboardMappingServiceTests.swift */; };
 		A10000000000000000000017 /* SettingsStoreTests.swift in Sources */ = {isa = PBXBuildFile; fileRef = B10000000000000000000017 /* SettingsStoreTests.swift */; };
 		A10000000000000000000018 /* LaunchAtLoginStatusMapperTests.swift in Sources */ = {isa = PBXBuildFile; fileRef = B10000000000000000000018 /* LaunchAtLoginStatusMapperTests.swift */; };
+		A1000000000000000000001D /* InputSourceSwitchServiceTests.swift in Sources */ = {isa = PBXBuildFile; fileRef = B1000000000000000000001D /* InputSourceSwitchServiceTests.swift */; };
 		A10000000000000000000019 /* Assets.xcassets in Resources */ = {isa = PBXBuildFile; fileRef = B1000000000000000000001B /* Assets.xcassets */; };
 /* End PBXBuildFile section */
 
@@ -56,9 +58,11 @@
 		B10000000000000000000010 /* DiagnosticsService.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = DiagnosticsService.swift; sourceTree = "<group>"; };
 		B10000000000000000000011 /* KeyboardMappingService.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = KeyboardMappingService.swift; sourceTree = "<group>"; };
 		B10000000000000000000014 /* SettingsStore.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = SettingsStore.swift; sourceTree = "<group>"; };
+		B1000000000000000000001C /* InputSourceSwitchService.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = InputSourceSwitchService.swift; sourceTree = "<group>"; };
 		B10000000000000000000016 /* KeyboardMappingServiceTests.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = KeyboardMappingServiceTests.swift; sourceTree = "<group>"; };
 		B10000000000000000000017 /* SettingsStoreTests.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = SettingsStoreTests.swift; sourceTree = "<group>"; };
 		B10000000000000000000018 /* LaunchAtLoginStatusMapperTests.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = LaunchAtLoginStatusMapperTests.swift; sourceTree = "<group>"; };
+		B1000000000000000000001D /* InputSourceSwitchServiceTests.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = InputSourceSwitchServiceTests.swift; sourceTree = "<group>"; };
 		B10000000000000000000019 /* MyMac.app */ = {isa = PBXFileReference; explicitFileType = wrapper.application; path = MyMac.app; sourceTree = BUILT_PRODUCTS_DIR; };
 		B1000000000000000000001A /* MyMacTests.xctest */ = {isa = PBXFileReference; explicitFileType = wrapper.cfbundle; path = MyMacTests.xctest; sourceTree = BUILT_PRODUCTS_DIR; };
 		B1000000000000000000001B /* Assets.xcassets */ = {isa = PBXFileReference; lastKnownFileType = folder.assetcatalog; path = Assets.xcassets; sourceTree = "<group>"; };
@@ -185,6 +189,7 @@
 			isa = PBXGroup;
 			children = (
 				B10000000000000000000016 /* KeyboardMappingServiceTests.swift */,
+				B1000000000000000000001D /* InputSourceSwitchServiceTests.swift */,
 				B10000000000000000000017 /* SettingsStoreTests.swift */,
 				B10000000000000000000018 /* LaunchAtLoginStatusMapperTests.swift */,
 			);
@@ -213,6 +218,7 @@
 				B1000000000000000000000E /* PermissionService.swift */,
 				B1000000000000000000000F /* LaunchAtLoginService.swift */,
 				B10000000000000000000010 /* DiagnosticsService.swift */,
+				B1000000000000000000001C /* InputSourceSwitchService.swift */,
 			);
 			path = Services;
 			sourceTree = "<group>";
@@ -331,6 +337,7 @@
 				A1000000000000000000000E /* PermissionService.swift in Sources */,
 				A1000000000000000000000F /* LaunchAtLoginService.swift in Sources */,
 				A10000000000000000000010 /* DiagnosticsService.swift in Sources */,
+				A1000000000000000000001C /* InputSourceSwitchService.swift in Sources */,
 				A10000000000000000000011 /* KeyboardMappingService.swift in Sources */,
 				A10000000000000000000014 /* SettingsStore.swift in Sources */,
 			);
@@ -341,6 +348,7 @@
 			buildActionMask = 2147483647;
 			files = (
 				A10000000000000000000016 /* KeyboardMappingServiceTests.swift in Sources */,
+				A1000000000000000000001D /* InputSourceSwitchServiceTests.swift in Sources */,
 				A10000000000000000000017 /* SettingsStoreTests.swift in Sources */,
 				A10000000000000000000018 /* LaunchAtLoginStatusMapperTests.swift in Sources */,
 			);

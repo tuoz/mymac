@@ -12,6 +12,7 @@ final class SettingsStoreTests: XCTestCase {
 
         XCTAssertFalse(store.hasCompletedOnboarding)
         XCTAssertTrue(store.isKeyboardMappingEnabled)
+        XCTAssertTrue(store.isInputSourceSwitchingEnabled)
         XCTAssertFalse(store.launchAtLoginDesired)
     }
 
@@ -23,12 +24,14 @@ final class SettingsStoreTests: XCTestCase {
         let store = SettingsStore(userDefaults: defaults)
         store.hasCompletedOnboarding = true
         store.isKeyboardMappingEnabled = false
+        store.isInputSourceSwitchingEnabled = false
         store.launchAtLoginDesired = true
 
         let reloadedStore = SettingsStore(userDefaults: defaults)
 
         XCTAssertTrue(reloadedStore.hasCompletedOnboarding)
         XCTAssertFalse(reloadedStore.isKeyboardMappingEnabled)
+        XCTAssertFalse(reloadedStore.isInputSourceSwitchingEnabled)
         XCTAssertTrue(reloadedStore.launchAtLoginDesired)
     }
 }

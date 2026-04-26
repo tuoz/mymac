@@ -14,7 +14,7 @@ struct OnboardingView: View {
                 .font(.largeTitle)
                 .bold()
 
-            Text("这是一个面向 macOS 的后台快捷键工具。现在它会尝试把 Fn + H/J/K/L 映射成方向键，并通过菜单栏和设置页管理运行状态。")
+            Text("这是一个面向 macOS 的后台快捷键工具。现在它会尝试把 Fn + H/J/K/L 映射成方向键，并通过 Fn + Space 切换 Roman 与非 Roman 输入法。")
                 .foregroundStyle(.secondary)
 
             GroupBox("开始前需要知道") {

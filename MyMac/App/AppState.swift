@@ -7,6 +7,7 @@ final class AppState {
     var runtimeStatus: RuntimeStatus
     var launchAtLoginStatus: LaunchAtLoginStatus
     var isKeyboardMappingEnabled: Bool
+    var isInputSourceSwitchingEnabled: Bool
     var hasCompletedOnboarding: Bool
 
     init(settingsStore: SettingsStore) {
@@ -14,6 +15,7 @@ final class AppState {
         runtimeStatus = .starting
         launchAtLoginStatus = .disabled
         isKeyboardMappingEnabled = settingsStore.isKeyboardMappingEnabled
+        isInputSourceSwitchingEnabled = settingsStore.isInputSourceSwitchingEnabled
         hasCompletedOnboarding = settingsStore.hasCompletedOnboarding
     }
 

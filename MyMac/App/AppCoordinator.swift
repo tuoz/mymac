@@ -137,6 +137,12 @@ final class AppCoordinator {
         await reconcileKeyboardMappingState()
     }
 
+    func setInputSourceSwitchingEnabled(_ enabled: Bool) async {
+        settingsStore.isInputSourceSwitchingEnabled = enabled
+        appState.isInputSourceSwitchingEnabled = enabled
+        await reconcileKeyboardMappingState()
+    }
+
     func setLaunchAtLoginEnabled(_ enabled: Bool) {
         do {
             try launchAtLoginService.setEnabled(enabled)
@@ -164,6 +170,7 @@ final class AppCoordinator {
 
     private func syncStateFromStore() {
         appState.isKeyboardMappingEnabled = settingsStore.isKeyboardMappingEnabled
+        appState.isInputSourceSwitchingEnabled = settingsStore.isInputSourceSwitchingEnabled
         appState.hasCompletedOnboarding = settingsStore.hasCompletedOnboarding
     }
 
@@ -194,7 +201,14 @@ final class AppCoordinator {
     }
 
     private func reconcileKeyboardMappingState() async {
-        if !appState.isKeyboardMappingEnabled {
+        let configuration = KeyboardMappingConfiguration(
+            isArrowKeyMappingEnabled: appState.isKeyboardMappingEnabled,
+            isInputSourceSwitchingEnabled: appState.isInputSourceSwitchingEnabled
+        )
+
+        await keyboardMappingService.updateConfiguration(configuration)
+
+        if !configuration.shouldListenForKeyboardEvents {
             await keyboardMappingService.stop()
             appState.runtimeStatus = .paused
             return

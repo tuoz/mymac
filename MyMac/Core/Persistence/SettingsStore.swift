@@ -4,6 +4,7 @@ final class SettingsStore {
     enum Key {
         static let hasCompletedOnboarding = "hasCompletedOnboarding"
         static let isKeyboardMappingEnabled = "isKeyboardMappingEnabled"
+        static let isInputSourceSwitchingEnabled = "isInputSourceSwitchingEnabled"
         static let launchAtLoginDesired = "launchAtLoginDesired"
     }
 
@@ -24,6 +25,11 @@ final class SettingsStore {
         set { userDefaults.set(newValue, forKey: Key.isKeyboardMappingEnabled) }
     }
 
+    var isInputSourceSwitchingEnabled: Bool {
+        get { userDefaults.bool(forKey: Key.isInputSourceSwitchingEnabled) }
+        set { userDefaults.set(newValue, forKey: Key.isInputSourceSwitchingEnabled) }
+    }
+
     var launchAtLoginDesired: Bool {
         get { userDefaults.bool(forKey: Key.launchAtLoginDesired) }
         set { userDefaults.set(newValue, forKey: Key.launchAtLoginDesired) }
@@ -33,6 +39,7 @@ final class SettingsStore {
         userDefaults.register(defaults: [
             Key.hasCompletedOnboarding: false,
             Key.isKeyboardMappingEnabled: true,
+            Key.isInputSourceSwitchingEnabled: true,
             Key.launchAtLoginDesired: false,
         ])
     }

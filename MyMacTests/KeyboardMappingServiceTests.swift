@@ -201,6 +201,68 @@ final class KeyboardEventTranslatorTests: XCTestCase {
     }
 }
 
+final class InputSourceSwitchShortcutTests: XCTestCase {
+    func testFnSpaceKeyDownTriggersInputSourceSwitch() {
+        let action = InputSourceSwitchShortcut.action(
+            eventType: .keyDown,
+            keyCode: CGKeyCode(kVK_Space),
+            eventFlags: [.maskSecondaryFn],
+            trackedFlags: [],
+            isAutorepeat: false
+        )
+
+        XCTAssertEqual(action, .consumeAndSwitch)
+    }
+
+    func testFnSpaceKeyUpOnlyConsumesEvent() {
+        let action = InputSourceSwitchShortcut.action(
+            eventType: .keyUp,
+            keyCode: CGKeyCode(kVK_Space),
+            eventFlags: [.maskSecondaryFn],
+            trackedFlags: [],
+            isAutorepeat: false
+        )
+
+        XCTAssertEqual(action, .consumeOnly)
+    }
+
+    func testFnSpaceAutorepeatOnlyConsumesEvent() {
+        let action = InputSourceSwitchShortcut.action(
+            eventType: .keyDown,
+            keyCode: CGKeyCode(kVK_Space),
+            eventFlags: [.maskSecondaryFn],
+            trackedFlags: [],
+            isAutorepeat: true
+        )
+
+        XCTAssertEqual(action, .consumeOnly)
+    }
+
+    func testCommandFnSpaceDoesNotTriggerInputSourceSwitch() {
+        let action = InputSourceSwitchShortcut.action(
+            eventType: .keyDown,
+            keyCode: CGKeyCode(kVK_Space),
+            eventFlags: [.maskCommand, .maskSecondaryFn],
+            trackedFlags: [],
+            isAutorepeat: false
+        )
+
+        XCTAssertNil(action)
+    }
+
+    func testUsesTrackedFnForSpaceShortcut() {
+        let action = InputSourceSwitchShortcut.action(
+            eventType: .keyDown,
+            keyCode: CGKeyCode(kVK_Space),
+            eventFlags: [],
+            trackedFlags: [.maskSecondaryFn],
+            isAutorepeat: false
+        )
+
+        XCTAssertEqual(action, .consumeAndSwitch)
+    }
+}
+
 final class ModifierStateTrackerTests: XCTestCase {
     func testTracksOnlyRelevantFlags() {
         var tracker = ModifierStateTracker()

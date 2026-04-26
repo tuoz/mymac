@@ -3,16 +3,41 @@ import CoreGraphics
 import Foundation
 
 protocol KeyboardMappingService: Sendable {
+    func updateConfiguration(_ configuration: KeyboardMappingConfiguration) async
     func start() async
     func stop() async
     func currentStatus() async -> RuntimeStatus
 }
 
+struct KeyboardMappingConfiguration: Equatable, Sendable {
+    var isArrowKeyMappingEnabled: Bool
+    var isInputSourceSwitchingEnabled: Bool
+
+    static let allEnabled = Self(
+        isArrowKeyMappingEnabled: true,
+        isInputSourceSwitchingEnabled: true
+    )
+
+    var shouldListenForKeyboardEvents: Bool {
+        isArrowKeyMappingEnabled || isInputSourceSwitchingEnabled
+    }
+}
+
 actor CGEventTapKeyboardMappingService: KeyboardMappingService {
     private let controller: EventTapController
 
-    init(diagnosticsService: DiagnosticsService) {
-        self.controller = EventTapController(diagnosticsService: diagnosticsService)
+    init(
+        inputSourceSwitchService: InputSourceSwitchService,
+        diagnosticsService: DiagnosticsService
+    ) {
+        self.controller = EventTapController(
+            inputSourceSwitchService: inputSourceSwitchService,
+            diagnosticsService: diagnosticsService
+        )
+    }
+
+    func updateConfiguration(_ configuration: KeyboardMappingConfiguration) async {
+        controller.updateConfiguration(configuration)
     }
 
     func start() async {
@@ -29,11 +54,13 @@ actor CGEventTapKeyboardMappingService: KeyboardMappingService {
 }
 
 private final class EventTapController: NSObject {
+    private let inputSourceSwitchTrigger: InputSourceSwitchTrigger
     private let diagnosticsService: DiagnosticsService
     private let translator = KeyboardEventTranslator()
     private let executor = KeyboardActionExecutor()
     private let stateLock = NSLock()
 
+    private var configuration: KeyboardMappingConfiguration = .allEnabled
     private var status: RuntimeStatus = .paused
     private var workerThread: Thread?
     private var startupSemaphore: DispatchSemaphore?
@@ -41,8 +68,21 @@ private final class EventTapController: NSObject {
     private var runLoopSource: CFRunLoopSource?
     private var modifierTracker = ModifierStateTracker()
 
-    init(diagnosticsService: DiagnosticsService) {
+    init(
+        inputSourceSwitchService: InputSourceSwitchService,
+        diagnosticsService: DiagnosticsService
+    ) {
+        self.inputSourceSwitchTrigger = InputSourceSwitchTrigger(
+            inputSourceSwitchService: inputSourceSwitchService,
+            diagnosticsService: diagnosticsService
+        )
         self.diagnosticsService = diagnosticsService
+    }
+
+    func updateConfiguration(_ configuration: KeyboardMappingConfiguration) {
+        stateLock.lock()
+        self.configuration = configuration
+        stateLock.unlock()
     }
 
     func start() -> RuntimeStatus {
@@ -207,13 +247,31 @@ private final class EventTapController: NSObject {
             return Unmanaged.passUnretained(event)
         }
 
-        guard let payload = translator.translate(
-            eventType: eventType,
-            keyCode: event.keyboardKeyCode,
-            eventFlags: event.flags,
-            trackedFlags: modifierTracker.activeFlags,
-            isAutorepeat: event.keyboardIsAutorepeat
-        ) else {
+        let currentConfiguration = currentConfiguration()
+
+        if currentConfiguration.isInputSourceSwitchingEnabled,
+           let inputSourceSwitchAction = InputSourceSwitchShortcut.action(
+               eventType: eventType,
+               keyCode: event.keyboardKeyCode,
+               eventFlags: event.flags,
+               trackedFlags: modifierTracker.activeFlags,
+               isAutorepeat: event.keyboardIsAutorepeat
+           ) {
+            if inputSourceSwitchAction.shouldTriggerSwitch {
+                inputSourceSwitchTrigger.trigger()
+            }
+
+            return nil
+        }
+
+        guard currentConfiguration.isArrowKeyMappingEnabled,
+              let payload = translator.translate(
+                  eventType: eventType,
+                  keyCode: event.keyboardKeyCode,
+                  eventFlags: event.flags,
+                  trackedFlags: modifierTracker.activeFlags,
+                  isAutorepeat: event.keyboardIsAutorepeat
+              ) else {
             return Unmanaged.passUnretained(event)
         }
 
@@ -225,6 +283,13 @@ private final class EventTapController: NSObject {
         return Unmanaged.passUnretained(event)
     }
 
+    private func currentConfiguration() -> KeyboardMappingConfiguration {
+        stateLock.lock()
+        let current = configuration
+        stateLock.unlock()
+        return current
+    }
+
     private static let eventTapCallback: CGEventTapCallBack = { _, type, event, userInfo in
         guard let userInfo else {
             return Unmanaged.passUnretained(event)
@@ -232,6 +297,95 @@ private final class EventTapController: NSObject {
 
         let controller = Unmanaged<EventTapController>.fromOpaque(userInfo).takeUnretainedValue()
         return controller.handle(eventType: type, event: event)
+    }
+}
+
+enum InputSourceSwitchShortcutAction: Equatable {
+    case consumeOnly
+    case consumeAndSwitch
+
+    var shouldTriggerSwitch: Bool {
+        self == .consumeAndSwitch
+    }
+}
+
+struct InputSourceSwitchShortcut {
+    static func action(
+        eventType: CGEventType,
+        keyCode: CGKeyCode,
+        eventFlags: CGEventFlags,
+        trackedFlags: CGEventFlags,
+        isAutorepeat: Bool
+    ) -> InputSourceSwitchShortcutAction? {
+        guard eventType == .keyDown || eventType == .keyUp,
+              keyCode == CGKeyCode(kVK_Space) else {
+            return nil
+        }
+
+        let effectiveFlags = KeyboardEventTranslator.effectiveFlags(
+            eventFlags: eventFlags,
+            trackedFlags: trackedFlags
+        )
+
+        guard effectiveFlags == [.maskSecondaryFn] else {
+            return nil
+        }
+
+        if eventType == .keyDown, !isAutorepeat {
+            return .consumeAndSwitch
+        }
+
+        return .consumeOnly
+    }
+}
+
+private final class InputSourceSwitchTrigger: @unchecked Sendable {
+    private let inputSourceSwitchService: InputSourceSwitchService
+    private let diagnosticsService: DiagnosticsService
+    private let stateLock = NSLock()
+    private var isSwitching = false
+
+    init(
+        inputSourceSwitchService: InputSourceSwitchService,
+        diagnosticsService: DiagnosticsService
+    ) {
+        self.inputSourceSwitchService = inputSourceSwitchService
+        self.diagnosticsService = diagnosticsService
+    }
+
+    func trigger() {
+        stateLock.lock()
+        guard !isSwitching else {
+            stateLock.unlock()
+            return
+        }
+        isSwitching = true
+        stateLock.unlock()
+
+        DispatchQueue.main.async { [inputSourceSwitchService, diagnosticsService, weak self] in
+            guard let self else {
+                return
+            }
+
+            switch inputSourceSwitchService.switchRomanNonRoman() {
+            case .success:
+                break
+            case .unavailable(let reason):
+                diagnosticsService.error(
+                    "Input source switch unavailable: \(reason)",
+                    category: .keyboardMapping
+                )
+            case .selectionFailed(let status):
+                diagnosticsService.error(
+                    "Input source switch failed: status=\(status)",
+                    category: .keyboardMapping
+                )
+            }
+
+            stateLock.lock()
+            isSwitching = false
+            stateLock.unlock()
+        }
     }
 }
 

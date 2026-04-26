@@ -32,11 +32,20 @@ private struct GeneralSettingsView: View {
 
     var body: some View {
         Form {
-            Toggle("启用键盘映射", isOn: Binding(
+            Toggle("启用方向键映射", isOn: Binding(
                 get: { appState.isKeyboardMappingEnabled },
                 set: { newValue in
                     Task {
                         await coordinator.setKeyboardMappingEnabled(newValue)
+                    }
+                }
+            ))
+
+            Toggle("启用输入法切换", isOn: Binding(
+                get: { appState.isInputSourceSwitchingEnabled },
+                set: { newValue in
+                    Task {
+                        await coordinator.setInputSourceSwitchingEnabled(newValue)
                     }
                 }
             ))
