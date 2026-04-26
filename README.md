@@ -1,8 +1,8 @@
 # MyMac
 
-MyMac 是一个轻量的 macOS 后台菜单栏工具，支持把 `Fn + H/J/K/L` 映射成方向键，并通过 `Fn + Space` 切换英文输入源与系统记忆的非英文输入法。
+![MyMac banner](docs/banner.png)
 
-它会尽量保留 `Cmd`、`Shift`、`Option`、`Control` 等其他修饰键，所以你可以继续自然组合使用，比如 `Fn + Cmd + H`、`Fn + Shift + L`。
+MyMac 是一个轻量的 macOS 菜单栏工具，支持 `Fn + H/J/K/L` 方向键映射与 `Fn + Space` 输入法切换，并保留常用修饰键组合。
 
 ## 特性
 
