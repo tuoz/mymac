@@ -369,23 +369,43 @@ private final class InputSourceSwitchTrigger: @unchecked Sendable {
 
             switch inputSourceSwitchService.switchRomanNonRoman() {
             case .success:
-                break
+                scheduleSecondSelect()
             case .unavailable(let reason):
                 diagnosticsService.error(
                     "Input source switch unavailable: \(reason)",
                     category: .keyboardMapping
                 )
+                finish()
             case .selectionFailed(let status):
                 diagnosticsService.error(
                     "Input source switch failed: status=\(status)",
                     category: .keyboardMapping
                 )
+                finish()
             }
-
-            stateLock.lock()
-            isSwitching = false
-            stateLock.unlock()
         }
+    }
+
+    private func scheduleSecondSelect(attempt: Int = 0) {
+        let delay: TimeInterval = 0.018
+
+        DispatchQueue.main.asyncAfter(deadline: .now() + delay) { [inputSourceSwitchService, weak self] in
+            guard let self else { return }
+
+            inputSourceSwitchService.refreshCurrentInputSource()
+
+            if attempt < 1 {
+                scheduleSecondSelect(attempt: attempt + 1)
+            } else {
+                finish()
+            }
+        }
+    }
+
+    private func finish() {
+        stateLock.lock()
+        isSwitching = false
+        stateLock.unlock()
     }
 }
 

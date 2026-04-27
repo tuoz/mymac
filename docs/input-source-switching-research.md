@@ -317,3 +317,44 @@ void *symbol = dlsym(handle, "TISCopyCurrentNonRomanInputSourceForRomanSwitch");
 但这个结论当前**不能泛化到所有输入法场景**。日文、韩文、多 Roman 布局与 synthetic Roman mode 仍未验证，因此后续若需要扩大适用范围，应继续补齐这些样本。
 
 下一阶段真正需要回答的问题，已经不再是“这组私有 API 是否能复刻行为”，而是：**在集成到 `CGEventTap` 时，如何安全地接入而不引入超时或卡顿。**
+
+---
+
+## 11. 后续实验记录（2026-04-28）
+
+### 11.1 已验证无效的方案
+
+| 方案 | 结果 |
+|------|------|
+| `TISSelectInputSource(target)` 单次调用 | 菜单栏更新，前台 App 不生效 |
+| `TISSelectInputSource` + `CGEventPostToPid(null event)` 投递到前台进程 | 完全无效 |
+| `TISSelectInputSource` + `DistributedNotification(kTISNotifySelectedKeyboardInputSourceChanged)` 空通知 | 完全无效 |
+| `TISSelectInputSource` + `CFNotificationCenterGetDistributedCenter()` + 带 `inputSourceID` userInfo 的通知 | 完全无效 |
+| `TISSelectInputSource` + `Thread.sleep(18ms)` + `CFNotificationCenterPost`（通知代替第二次 TIS 调用） | 完全无效 |
+
+### 11.2 唯一稳定有效的方案
+
+```
+TISSelectInputSource(target)                    // 第一次切换
+DispatchQueue.main.asyncAfter(18ms) {
+    re-select(fresh currentInputSource)          // 第二次（重新激活）
+    DispatchQueue.main.asyncAfter(18ms) {
+        re-select(fresh currentInputSource)      // 第三次（兜底）
+    }
+}
+```
+
+关键发现：
+- **18ms 是精确阈值** — 低于 18ms 完全无效，18ms 及以上有效但不稳定
+- **非阻塞延迟至关重要** — `Thread.sleep` 冻结主 RunLoop 导致不稳定；`DispatchQueue.main.asyncAfter` 保持 RunLoop 运转后稳定性大幅提升
+- **两次异步 re-select（共 36ms 窗口）**进一步提升稳定性，几乎达到可用标准
+- `TISSelectInputSource` 的第二次调用在目标已选中时会走「重新激活」路径，该路径会触发前台 App 的 per-process 输入源状态更新
+- 分布式通知（`kTISNotifySelectedKeyboardInputSourceChanged`）无论 C 级还是 Foundation API，从后台进程发送均无法替代第二次 TIS 调用
+
+### 11.3 推测的底层机制
+
+- macOS 的输入源状态分两层：**全局 session 状态**（菜单栏读取）和 **per-process 状态**（每个 App 独立维护）
+- `TISSelectInputSource` 只能更新调用进程自身的 per-process 状态 + 全局状态
+- 前台 App 的 per-process 状态更新由系统进程 `TextInputSwitcher` 通过特权路径（CGS 私有 API / Mach 消息）完成
+- 18ms 阈值暗示存在一个约 16.67ms（60Hz）的内部状态机/帧周期
+- `TISSelectInputSource` 在目标已选中时触发的内部路径可能包含向 WindowServer 发送 per-process 状态同步消息的逻辑

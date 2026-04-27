@@ -109,7 +109,7 @@ private extension InputSourceDescriptor {
 }
 
 private final class MockInputSourceSwitchingClient: InputSourceSwitchingClient, @unchecked Sendable {
-    private let current: InputSourceDescriptor?
+    private var current: InputSourceDescriptor?
     private let nonRoman: InputSourceDescriptor?
     private let ascii: InputSourceDescriptor?
     private let enabled: [InputSourceDescriptor]
@@ -150,6 +150,7 @@ private final class MockInputSourceSwitchingClient: InputSourceSwitchingClient, 
         if selectedIDs.last != inputSource.id {
             selectedIDs.append(inputSource.id)
         }
+        current = inputSource
         return selectionStatus
     }
 }
