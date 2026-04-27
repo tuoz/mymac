@@ -62,15 +62,23 @@ struct DefaultInputSourceSwitchService: InputSourceSwitchService {
             return .unavailable("No input source switch target available")
         }
 
-        let status = client.selectInputSource(target)
-        guard status == noErr else {
-            diagnosticsService.error(
-                "Failed to select input source \(target.id): status=\(status)",
-                category: .keyboardMapping
-            )
-            return .selectionFailed(status)
-        }
+        return switchWithRetry(target)
+    }
 
+    private func switchWithRetry(_ target: InputSourceDescriptor) -> InputSourceSwitchResult {
+        for i in 0..<2 {
+            let status = client.selectInputSource(target)
+            guard status == noErr else {
+                diagnosticsService.error(
+                    "Failed to select input source \(target.id): status=\(status)",
+                    category: .keyboardMapping
+                )
+                return .selectionFailed(status)
+            }
+            if i < 1 {
+                Thread.sleep(forTimeInterval: 0.018)
+            }
+        }
         return .success
     }
 

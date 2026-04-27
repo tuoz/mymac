@@ -147,7 +147,9 @@ private final class MockInputSourceSwitchingClient: InputSourceSwitchingClient, 
     }
 
     func selectInputSource(_ inputSource: InputSourceDescriptor) -> OSStatus {
-        selectedIDs.append(inputSource.id)
+        if selectedIDs.last != inputSource.id {
+            selectedIDs.append(inputSource.id)
+        }
         return selectionStatus
     }
 }
