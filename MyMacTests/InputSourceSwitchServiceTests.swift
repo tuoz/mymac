@@ -169,6 +169,124 @@ final class InputSourceSwitchServiceTests: XCTestCase {
     }
 }
 
+final class InputSourceSwitchTriggerTests: XCTestCase {
+    func testSuccessfulTriggerSwitchesOnceAndReselectsTwice() {
+        let service = MockInputSourceSwitchService()
+        let scheduler = ManualInputSourceSwitchScheduler()
+        let trigger = InputSourceSwitchTrigger(
+            inputSourceSwitchService: service,
+            diagnosticsService: MockDiagnosticsService(),
+            scheduler: scheduler
+        )
+
+        trigger.trigger()
+
+        XCTAssertEqual(scheduler.pendingCount, 1)
+        scheduler.runNext()
+        XCTAssertEqual(service.switchCount, 1)
+        XCTAssertEqual(service.refreshCount, 0)
+        XCTAssertEqual(scheduler.pendingCount, 1)
+
+        scheduler.runNext()
+        XCTAssertEqual(service.refreshCount, 1)
+        XCTAssertEqual(scheduler.recordedDelays, [0.018, 0.018])
+
+        scheduler.runNext()
+        XCTAssertEqual(service.refreshCount, 2)
+        XCTAssertEqual(scheduler.recordedDelays, [0.018, 0.018])
+        XCTAssertEqual(scheduler.pendingCount, 0)
+    }
+
+    func testTriggerSuppressesConcurrentSwitchWhileSessionIsActive() {
+        let service = MockInputSourceSwitchService()
+        let scheduler = ManualInputSourceSwitchScheduler()
+        let trigger = InputSourceSwitchTrigger(
+            inputSourceSwitchService: service,
+            diagnosticsService: MockDiagnosticsService(),
+            scheduler: scheduler
+        )
+
+        trigger.trigger()
+        trigger.trigger()
+        scheduler.runAll()
+
+        XCTAssertEqual(service.switchCount, 1)
+        XCTAssertEqual(service.refreshCount, 2)
+    }
+
+    func testRefreshFailureStopsRetriesAndAllowsFutureTrigger() {
+        let service = MockInputSourceSwitchService(
+            refreshResults: [.selectionFailed(OSStatus(paramErr))]
+        )
+        let scheduler = ManualInputSourceSwitchScheduler()
+        let trigger = InputSourceSwitchTrigger(
+            inputSourceSwitchService: service,
+            diagnosticsService: MockDiagnosticsService(),
+            scheduler: scheduler
+        )
+
+        trigger.trigger()
+        scheduler.runAll()
+
+        XCTAssertEqual(service.switchCount, 1)
+        XCTAssertEqual(service.refreshCount, 1)
+        XCTAssertEqual(scheduler.pendingCount, 0)
+
+        trigger.trigger()
+        scheduler.runAll()
+
+        XCTAssertEqual(service.switchCount, 2)
+    }
+
+    func testInitialSwitchFailureAllowsFutureTrigger() {
+        let service = MockInputSourceSwitchService(
+            switchResults: [.selectionFailed(OSStatus(paramErr)), .success]
+        )
+        let scheduler = ManualInputSourceSwitchScheduler()
+        let trigger = InputSourceSwitchTrigger(
+            inputSourceSwitchService: service,
+            diagnosticsService: MockDiagnosticsService(),
+            scheduler: scheduler
+        )
+
+        trigger.trigger()
+        scheduler.runAll()
+
+        XCTAssertEqual(service.switchCount, 1)
+        XCTAssertEqual(service.refreshCount, 0)
+
+        trigger.trigger()
+        scheduler.runAll()
+
+        XCTAssertEqual(service.switchCount, 2)
+        XCTAssertEqual(service.refreshCount, 2)
+    }
+
+    func testCancelPreventsPendingReselectAndAllowsFutureTrigger() {
+        let service = MockInputSourceSwitchService()
+        let scheduler = ManualInputSourceSwitchScheduler()
+        let trigger = InputSourceSwitchTrigger(
+            inputSourceSwitchService: service,
+            diagnosticsService: MockDiagnosticsService(),
+            scheduler: scheduler
+        )
+
+        trigger.trigger()
+        scheduler.runNext()
+        XCTAssertEqual(service.switchCount, 1)
+        XCTAssertEqual(scheduler.pendingCount, 1)
+
+        trigger.cancel()
+        scheduler.runAll()
+        XCTAssertEqual(service.refreshCount, 0)
+
+        trigger.trigger()
+        scheduler.runAll()
+        XCTAssertEqual(service.switchCount, 2)
+        XCTAssertEqual(service.refreshCount, 2)
+    }
+}
+
 private extension InputSourceDescriptor {
     static let abc = InputSourceDescriptor(id: "abc", isASCIICapable: true)
     static let pinyin = InputSourceDescriptor(id: "pinyin", isASCIICapable: false)
@@ -224,4 +342,68 @@ private final class MockInputSourceSwitchingClient: InputSourceSwitchingClient, 
 private struct MockDiagnosticsService: DiagnosticsService {
     func log(_ message: String, category: DiagnosticsCategory) {}
     func error(_ message: String, category: DiagnosticsCategory) {}
+}
+
+private final class MockInputSourceSwitchService: InputSourceSwitchService, @unchecked Sendable {
+    private var switchResults: [InputSourceSwitchResult]
+    private var refreshResults: [InputSourceSwitchResult]
+    private(set) var switchCount = 0
+    private(set) var refreshCount = 0
+
+    init(
+        switchResults: [InputSourceSwitchResult] = [],
+        refreshResults: [InputSourceSwitchResult] = []
+    ) {
+        self.switchResults = switchResults
+        self.refreshResults = refreshResults
+    }
+
+    func switchRomanNonRoman() -> InputSourceSwitchResult {
+        switchCount += 1
+        guard !switchResults.isEmpty else {
+            return .success
+        }
+        return switchResults.removeFirst()
+    }
+
+    func refreshCurrentInputSource() -> InputSourceSwitchResult {
+        refreshCount += 1
+        guard !refreshResults.isEmpty else {
+            return .success
+        }
+        return refreshResults.removeFirst()
+    }
+}
+
+private final class ManualInputSourceSwitchScheduler: InputSourceSwitchScheduling, @unchecked Sendable {
+    private var actions: [@Sendable () -> Void] = []
+    private(set) var recordedDelays: [TimeInterval] = []
+
+    var pendingCount: Int {
+        actions.count
+    }
+
+    func async(_ action: @escaping @Sendable () -> Void) {
+        actions.append(action)
+    }
+
+    func asyncAfter(_ delay: TimeInterval, _ action: @escaping @Sendable () -> Void) {
+        recordedDelays.append(delay)
+        actions.append(action)
+    }
+
+    func runNext() {
+        guard !actions.isEmpty else {
+            return
+        }
+
+        let action = actions.removeFirst()
+        action()
+    }
+
+    func runAll() {
+        while !actions.isEmpty {
+            runNext()
+        }
+    }
 }

@@ -81,8 +81,13 @@ private final class EventTapController: NSObject {
 
     func updateConfiguration(_ configuration: KeyboardMappingConfiguration) {
         stateLock.lock()
+        let shouldCancelInputSourceSwitching = self.configuration.isInputSourceSwitchingEnabled && !configuration.isInputSourceSwitchingEnabled
         self.configuration = configuration
         stateLock.unlock()
+
+        if shouldCancelInputSourceSwitching {
+            inputSourceSwitchTrigger.cancel()
+        }
     }
 
     func start() -> RuntimeStatus {
@@ -186,6 +191,8 @@ private final class EventTapController: NSObject {
 
     @objc
     private func stopEventLoop() {
+        inputSourceSwitchTrigger.cancel()
+
         if let tap = eventTap {
             CGEvent.tapEnable(tap: tap, enable: false)
             CFMachPortInvalidate(tap)
@@ -339,18 +346,50 @@ struct InputSourceSwitchShortcut {
     }
 }
 
-private final class InputSourceSwitchTrigger: @unchecked Sendable {
+struct InputSourceSwitchRetryPolicy: Equatable, Sendable {
+    var reselectDelay: TimeInterval
+    var reselectAttempts: Int
+
+    static let defaultPolicy = Self(
+        reselectDelay: 0.018,
+        reselectAttempts: 2
+    )
+}
+
+protocol InputSourceSwitchScheduling: Sendable {
+    func async(_ action: @escaping @Sendable () -> Void)
+    func asyncAfter(_ delay: TimeInterval, _ action: @escaping @Sendable () -> Void)
+}
+
+struct MainQueueInputSourceSwitchScheduler: InputSourceSwitchScheduling {
+    func async(_ action: @escaping @Sendable () -> Void) {
+        DispatchQueue.main.async(execute: action)
+    }
+
+    func asyncAfter(_ delay: TimeInterval, _ action: @escaping @Sendable () -> Void) {
+        DispatchQueue.main.asyncAfter(deadline: .now() + delay, execute: action)
+    }
+}
+
+final class InputSourceSwitchTrigger: @unchecked Sendable {
     private let inputSourceSwitchService: InputSourceSwitchService
     private let diagnosticsService: DiagnosticsService
+    private let scheduler: InputSourceSwitchScheduling
+    private let retryPolicy: InputSourceSwitchRetryPolicy
     private let stateLock = NSLock()
     private var isSwitching = false
+    private var generation = 0
 
     init(
         inputSourceSwitchService: InputSourceSwitchService,
-        diagnosticsService: DiagnosticsService
+        diagnosticsService: DiagnosticsService,
+        scheduler: InputSourceSwitchScheduling = MainQueueInputSourceSwitchScheduler(),
+        retryPolicy: InputSourceSwitchRetryPolicy = .defaultPolicy
     ) {
         self.inputSourceSwitchService = inputSourceSwitchService
         self.diagnosticsService = diagnosticsService
+        self.scheduler = scheduler
+        self.retryPolicy = retryPolicy
     }
 
     func trigger() {
@@ -360,68 +399,96 @@ private final class InputSourceSwitchTrigger: @unchecked Sendable {
             return
         }
         isSwitching = true
+        generation += 1
+        let sessionGeneration = generation
         stateLock.unlock()
 
-        DispatchQueue.main.async { [inputSourceSwitchService, diagnosticsService, weak self] in
+        scheduler.async { [inputSourceSwitchService, diagnosticsService, weak self] in
             guard let self else {
+                return
+            }
+
+            guard isCurrentSession(sessionGeneration) else {
                 return
             }
 
             switch inputSourceSwitchService.switchRomanNonRoman() {
             case .success:
-                scheduleSecondSelect()
+                if retryPolicy.reselectAttempts > 0 {
+                    scheduleReselect(attempt: 1, sessionGeneration: sessionGeneration)
+                } else {
+                    finish(sessionGeneration: sessionGeneration)
+                }
             case .unavailable(let reason):
                 diagnosticsService.error(
                     "Input source switch unavailable: \(reason)",
                     category: .keyboardMapping
                 )
-                finish()
+                finish(sessionGeneration: sessionGeneration)
             case .selectionFailed(let status):
                 diagnosticsService.error(
                     "Input source switch failed: status=\(status)",
                     category: .keyboardMapping
                 )
-                finish()
+                finish(sessionGeneration: sessionGeneration)
             }
         }
     }
 
-    private func scheduleSecondSelect(attempt: Int = 0) {
-        let delay: TimeInterval = 0.018
+    func cancel() {
+        stateLock.lock()
+        generation += 1
+        isSwitching = false
+        stateLock.unlock()
+    }
 
-        DispatchQueue.main.asyncAfter(deadline: .now() + delay) { [inputSourceSwitchService, diagnosticsService, weak self] in
+    private func scheduleReselect(attempt: Int, sessionGeneration: Int) {
+        scheduler.asyncAfter(retryPolicy.reselectDelay) { [inputSourceSwitchService, diagnosticsService, weak self] in
             guard let self else { return }
+
+            guard isCurrentSession(sessionGeneration) else {
+                return
+            }
 
             switch inputSourceSwitchService.refreshCurrentInputSource() {
             case .success:
                 break
             case .unavailable(let reason):
                 diagnosticsService.error(
-                    "Input source re-select unavailable: \(reason)",
+                    "Input source re-select attempt \(attempt) unavailable: \(reason)",
                     category: .keyboardMapping
                 )
-                finish()
+                finish(sessionGeneration: sessionGeneration)
                 return
             case .selectionFailed(let status):
                 diagnosticsService.error(
-                    "Input source re-select failed: status=\(status)",
+                    "Input source re-select attempt \(attempt) failed: status=\(status)",
                     category: .keyboardMapping
                 )
-                finish()
+                finish(sessionGeneration: sessionGeneration)
                 return
             }
 
-            if attempt < 1 {
-                scheduleSecondSelect(attempt: attempt + 1)
+            if attempt < retryPolicy.reselectAttempts {
+                scheduleReselect(attempt: attempt + 1, sessionGeneration: sessionGeneration)
             } else {
-                finish()
+                finish(sessionGeneration: sessionGeneration)
             }
         }
     }
 
-    private func finish() {
+    private func isCurrentSession(_ sessionGeneration: Int) -> Bool {
         stateLock.lock()
-        isSwitching = false
+        let isCurrent = isSwitching && generation == sessionGeneration
+        stateLock.unlock()
+        return isCurrent
+    }
+
+    private func finish(sessionGeneration: Int) {
+        stateLock.lock()
+        if generation == sessionGeneration {
+            isSwitching = false
+        }
         stateLock.unlock()
     }
 }
