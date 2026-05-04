@@ -10,7 +10,7 @@ enum InputSourceSwitchResult: Equatable, Sendable {
 
 protocol InputSourceSwitchService: Sendable {
     func switchRomanNonRoman() -> InputSourceSwitchResult
-    func refreshCurrentInputSource()
+    func refreshCurrentInputSource() -> InputSourceSwitchResult
 }
 
 struct InputSourceDescriptor: Equatable, Sendable {
@@ -75,9 +75,22 @@ struct DefaultInputSourceSwitchService: InputSourceSwitchService {
         return .success
     }
 
-    func refreshCurrentInputSource() {
-        guard let fresh = client.currentInputSource() else { return }
-        _ = client.selectInputSource(fresh)
+    func refreshCurrentInputSource() -> InputSourceSwitchResult {
+        guard let fresh = client.currentInputSource() else {
+            diagnosticsService.error("No current input source available", category: .keyboardMapping)
+            return .unavailable("No current input source available")
+        }
+
+        let status = client.selectInputSource(fresh)
+        guard status == noErr else {
+            diagnosticsService.error(
+                "Failed to re-select input source \(fresh.id): status=\(status)",
+                category: .keyboardMapping
+            )
+            return .selectionFailed(status)
+        }
+
+        return .success
     }
 
     private func preferredTarget() -> InputSourceDescriptor? {

@@ -389,10 +389,27 @@ private final class InputSourceSwitchTrigger: @unchecked Sendable {
     private func scheduleSecondSelect(attempt: Int = 0) {
         let delay: TimeInterval = 0.018
 
-        DispatchQueue.main.asyncAfter(deadline: .now() + delay) { [inputSourceSwitchService, weak self] in
+        DispatchQueue.main.asyncAfter(deadline: .now() + delay) { [inputSourceSwitchService, diagnosticsService, weak self] in
             guard let self else { return }
 
-            inputSourceSwitchService.refreshCurrentInputSource()
+            switch inputSourceSwitchService.refreshCurrentInputSource() {
+            case .success:
+                break
+            case .unavailable(let reason):
+                diagnosticsService.error(
+                    "Input source re-select unavailable: \(reason)",
+                    category: .keyboardMapping
+                )
+                finish()
+                return
+            case .selectionFailed(let status):
+                diagnosticsService.error(
+                    "Input source re-select failed: status=\(status)",
+                    category: .keyboardMapping
+                )
+                finish()
+                return
+            }
 
             if attempt < 1 {
                 scheduleSecondSelect(attempt: attempt + 1)

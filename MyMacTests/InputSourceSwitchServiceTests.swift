@@ -101,6 +101,72 @@ final class InputSourceSwitchServiceTests: XCTestCase {
         XCTAssertEqual(service.switchRomanNonRoman(), InputSourceSwitchResult.selectionFailed(OSStatus(paramErr)))
         XCTAssertEqual(client.selectedIDs, ["pinyin"])
     }
+
+    func testRefreshCurrentInputSourceReSelectsCurrentInputSource() {
+        let client = MockInputSourceSwitchingClient(
+            current: .pinyin,
+            nonRoman: .pinyin,
+            ascii: .abc,
+            enabled: [.abc, .pinyin]
+        )
+        let service = DefaultInputSourceSwitchService(
+            client: client,
+            diagnosticsService: MockDiagnosticsService()
+        )
+
+        XCTAssertEqual(service.refreshCurrentInputSource(), InputSourceSwitchResult.success)
+        XCTAssertEqual(client.selectedIDs, ["pinyin"])
+    }
+
+    func testRefreshCurrentInputSourceReturnsUnavailableWhenCurrentIsMissing() {
+        let client = MockInputSourceSwitchingClient(
+            current: nil,
+            nonRoman: .pinyin,
+            ascii: .abc,
+            enabled: [.abc, .pinyin]
+        )
+        let service = DefaultInputSourceSwitchService(
+            client: client,
+            diagnosticsService: MockDiagnosticsService()
+        )
+
+        if case .unavailable = service.refreshCurrentInputSource() {
+            XCTAssertTrue(client.selectedIDs.isEmpty)
+        } else {
+            XCTFail("Expected unavailable result")
+        }
+    }
+
+    func testRefreshCurrentInputSourceReturnsSelectionFailedWhenClientRejectsCurrent() {
+        let client = MockInputSourceSwitchingClient(
+            current: .pinyin,
+            nonRoman: .pinyin,
+            ascii: .abc,
+            enabled: [.abc, .pinyin],
+            selectionStatus: OSStatus(paramErr)
+        )
+        let service = DefaultInputSourceSwitchService(
+            client: client,
+            diagnosticsService: MockDiagnosticsService()
+        )
+
+        XCTAssertEqual(service.refreshCurrentInputSource(), InputSourceSwitchResult.selectionFailed(OSStatus(paramErr)))
+        XCTAssertEqual(client.selectedIDs, ["pinyin"])
+    }
+
+    func testMockKeepsCurrentInputSourceWhenSelectionFails() {
+        let client = MockInputSourceSwitchingClient(
+            current: .abc,
+            nonRoman: .pinyin,
+            ascii: .abc,
+            enabled: [.abc, .pinyin],
+            selectionStatus: OSStatus(paramErr)
+        )
+
+        XCTAssertEqual(client.selectInputSource(.pinyin), OSStatus(paramErr))
+        XCTAssertEqual(client.currentInputSource(), .abc)
+        XCTAssertEqual(client.selectedIDs, ["pinyin"])
+    }
 }
 
 private extension InputSourceDescriptor {
@@ -147,10 +213,10 @@ private final class MockInputSourceSwitchingClient: InputSourceSwitchingClient, 
     }
 
     func selectInputSource(_ inputSource: InputSourceDescriptor) -> OSStatus {
-        if selectedIDs.last != inputSource.id {
-            selectedIDs.append(inputSource.id)
+        selectedIDs.append(inputSource.id)
+        if selectionStatus == noErr {
+            current = inputSource
         }
-        current = inputSource
         return selectionStatus
     }
 }
