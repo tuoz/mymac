@@ -178,7 +178,7 @@ if current == nonRomanTarget {
 
 ### 6.1 核心逻辑
 
-当前样本下已验证有效的逻辑如下：
+当前样本下已验证有效的实验逻辑如下。它描述的是 TIS 调用顺序，不等同于产品代码中的具体类型划分：
 
 ```swift
 func switchInputSource() {
@@ -228,21 +228,25 @@ languages.contains("en")
 
 `kTISPropertyInputSourceLanguages` 仍可作为辅助观察值，但不应再被用作 Latin / Roman 的主定义。
 
-### 6.4 事件流集成
+### 6.4 当前事件流集成
 
-`Fn + Space` 的接入方式仍可以保持原有思路：
+当前代码的 `Fn + Space` 接入链路如下：
 
 ```text
 CGEventTap → EventTapController.handle()
-         ├─ 检测到 Fn + Space keyDown ──→ InputMethodSwitchService.switch()
+         ├─ 检测到 Fn + Space keyDown ──→ InputSourceSwitchTrigger.trigger()
+         │                                    → 主队列异步调用
+         │                                    → InputSourceSwitchService.switchRomanNonRoman()
+         │                                    → CarbonInputSourceSwitchingClient.selectInputSource()
+         │                                    → TISSelectInputSource(target)
          │                                    → 返回 nil（消费事件）
          ├─ 检测到 Fn + Space keyUp ─────→ 返回 nil（消费事件）
          └─ 其他事件 ───────────────────→ 原有 H/J/K/L 映射流程
 ```
 
-但“是否可以同步放入 `CGEventTap` 回调”是**集成问题**，不属于当前主行为结论的一部分。
+`DefaultInputSourceSwitchService` 优先使用系统维护的 non-Roman 目标和 ASCII capable 目标；这些信息不完整时，才按 ASCII capable 属性从已启用输入源中回退选择。每次触发只选择一次目标，成功或失败后立即结束。
 
-结合本轮实验中 `TISSelectInputSource()` 单次调用实际耗时约 `2ms–23ms`（`P50 ≈ 7ms`），在 `CGEventTap` 回调内同步执行的阻塞风险已显著降低。但需注意：`CGEventTap` 回调应保持轻量，tap timeout 阈值在不同 macOS 版本中有所不同（通常为 `300ms–1s`）。从工程设计上仍推荐异步化方案，但如果实测耗时远低于阈值，同步调用也不属于高风险选择。
+实际切换在 event tap 回调外通过主队列异步执行，回调本身只负责识别、消费事件和投递请求；实验中关于同步放入回调的耗时与风险观察保留为实验资料，不是当前实现方式。
 
 ---
 
@@ -253,8 +257,8 @@ CGEventTap → EventTapController.handle()
 | **样本范围有限** | 高 | 当前结论只覆盖 `ABC + 简体拼音` | 后续补做日文、韩文、多 Roman、synthetic Roman mode 样本 |
 | **复杂输入法状态机未覆盖** | 高 | 尚未验证更复杂输入法是否仍与 `Caps Lock` 一致 | 将复杂输入法场景单独列为后续验证项 |
 | **私有 API 变更** | 中 | 系统升级可能修改或移除相关私有 API | 代码中封装隔离；保留公开 API 兜底路径 |
-| **`CGEventTap` 同步调用阻塞风险** | 低 | 实测 `TISSelectInputSource()` 单次调用仅 `2ms–23ms`（`P50 ≈ 7ms`），远低于 tap timeout 阈值（通常 `300ms+`）；同步调用阻塞风险显著降低 | 仍推荐异步化设计，但同步调用已不属于高风险 |
-| **`CGEventTap` 集成方式** | 中 | 当前只验证了行为一致性，尚未验证同步回调内调用是否安全 | 将 event tap 集成单独验证，不与主行为结论混淆 |
+| **`CGEventTap` 同步调用阻塞风险** | 低 | 产品代码不在 event tap 回调内同步调用 TIS，而是投递到主队列异步执行；实验中的 `2ms–23ms`（`P50 ≈ 7ms`）仅作为调用耗时参考 | 保持回调轻量，切换逻辑在回调外执行 |
+| **`CGEventTap` 集成方式** | 低 | 当前实现由 `EventTapController` 消费 `Fn + Space`，再通过 `InputSourceSwitchTrigger` 异步触发单次切换 | 保留单飞和 generation 取消保护，避免停用后执行过期请求 |
 | **App Store 上架** | 低 | 使用私有 API 无法通过 App Store 审核 | 当前为个人自用工具，不考虑上架 |
 | **多 Roman 输入源优先级** | 低 | 当前未覆盖第二 Roman 布局场景 | 若后续需要，可增加用户配置首选 Roman 输入源 |
 | **`TISIsKeyboardLayoutCapsLockSwitched` 导致进程挂起** | 中 | 该函数从独立进程调用时会永久阻塞（120s 超时验证）；`TISIsKeyboardLayoutCapsLockSwitchAllowed` 同样 | 生产代码中**禁止调用**；只需使用 `TISCopyCurrentNonRomanInputSourceForRomanSwitch` 和 `TISIsRomanSwitchEnabled` 即可 |
@@ -287,13 +291,9 @@ void *symbol = dlsym(handle, "TISCopyCurrentNonRomanInputSourceForRomanSwitch");
 
 ### 8.3 线程与集成
 
-普通线程调用已验证可行。`TISSelectInputSource()` 耗时实测仅 `2ms–23ms`（`P50 ≈ 7ms`），远低于初始测算的 `200ms`。因此：
+普通线程调用已验证可行。当前产品实现遵循回调轻量原则：`EventTapController` 只消费 `Fn + Space` 并投递请求，`InputSourceSwitchTrigger` 再通过主队列异步调用 `switchRomanNonRoman()`；该调用成功或失败后不再执行额外 re-select。
 
-- 当前可以确认"这组 API 能完成切换行为"
-- "是否适合同步放入 `CGEventTap` 回调"的风险等级已从「中」降为「低」，但最佳实践仍推荐异步化
-- 从工程设计上，推荐回调只负责消费事件和投递切换请求，实际切换在回调外异步执行
-
-这属于实现集成问题，不影响本报告关于主行为的一致性结论。
+实验中记录的 `TISSelectInputSource()` 调用耗时约 `2ms–23ms`（`P50 ≈ 7ms`）仍可用于评估系统调用本身，但不改变当前异步集成设计。
 
 ---
 
@@ -316,45 +316,22 @@ void *symbol = dlsym(handle, "TISCopyCurrentNonRomanInputSourceForRomanSwitch");
 
 但这个结论当前**不能泛化到所有输入法场景**。日文、韩文、多 Roman 布局与 synthetic Roman mode 仍未验证，因此后续若需要扩大适用范围，应继续补齐这些样本。
 
-下一阶段真正需要回答的问题，已经不再是“这组私有 API 是否能复刻行为”，而是：**在集成到 `CGEventTap` 时，如何安全地接入而不引入超时或卡顿。**
+当前代码已完成 event tap 集成：回调只识别并消费快捷键，实际输入源选择通过主队列异步执行。后续验证重点仍是不同输入法样本下的目标选择行为，而不是再引入延迟 re-select workaround。
 
 ---
 
-## 11. 后续实验记录（2026-04-28）
+## 11. 当前集成实现（2026-08-31）
 
-### 11.1 已验证无效的方案
+应用在 `Fn + Space` 的 keyDown 时消费事件，并在主队列异步执行一次输入源选择：
 
-| 方案 | 结果 |
-|------|------|
-| `TISSelectInputSource(target)` 单次调用 | 菜单栏更新，前台 App 不生效 |
-| `TISSelectInputSource` + `CGEventPostToPid(null event)` 投递到前台进程 | 完全无效 |
-| `TISSelectInputSource` + `DistributedNotification(kTISNotifySelectedKeyboardInputSourceChanged)` 空通知 | 完全无效 |
-| `TISSelectInputSource` + `CFNotificationCenterGetDistributedCenter()` + 带 `inputSourceID` userInfo 的通知 | 完全无效 |
-| `TISSelectInputSource` + `Thread.sleep(18ms)` + `CFNotificationCenterPost`（通知代替第二次 TIS 调用） | 完全无效 |
-
-### 11.2 唯一稳定有效的方案
-
-```
-TISSelectInputSource(target)                    // 第一次切换
-DispatchQueue.main.asyncAfter(18ms) {
-    re-select(fresh currentInputSource)          // 第二次（重新激活）
-    DispatchQueue.main.asyncAfter(18ms) {
-        re-select(fresh currentInputSource)      // 第三次（兜底）
-    }
-}
+```text
+CGEventTap → EventTapController.handle()
+         → InputSourceSwitchTrigger.trigger()
+         → DispatchQueue.main.async
+         → switchRomanNonRoman()
+         → TISSelectInputSource(target)
 ```
 
-关键发现：
-- **18ms 是精确阈值** — 低于 18ms 完全无效，18ms 及以上有效但不稳定
-- **非阻塞延迟至关重要** — `Thread.sleep` 冻结主 RunLoop 导致不稳定；`DispatchQueue.main.asyncAfter` 保持 RunLoop 运转后稳定性大幅提升
-- **两次异步 re-select（共 36ms 窗口）**进一步提升稳定性，几乎达到可用标准
-- `TISSelectInputSource` 的第二次调用在目标已选中时会走「重新激活」路径，该路径会触发前台 App 的 per-process 输入源状态更新
-- 分布式通知（`kTISNotifySelectedKeyboardInputSourceChanged`）无论 C 级还是 Foundation API，从后台进程发送均无法替代第二次 TIS 调用
+目标仍优先使用系统维护的 non-Roman 输入源，并在该信息不可用时基于 ASCII capable 属性回退。一次选择成功或失败后，本次触发立即结束；实现不会延迟重新选择当前输入源。
 
-### 11.3 推测的底层机制
-
-- macOS 的输入源状态分两层：**全局 session 状态**（菜单栏读取）和 **per-process 状态**（每个 App 独立维护）
-- `TISSelectInputSource` 只能更新调用进程自身的 per-process 状态 + 全局状态
-- 前台 App 的 per-process 状态更新由系统进程 `TextInputSwitcher` 通过特权路径（CGS 私有 API / Mach 消息）完成
-- 18ms 阈值暗示存在一个约 16.67ms（60Hz）的内部状态机/帧周期
-- `TISSelectInputSource` 在目标已选中时触发的内部路径可能包含向 WindowServer 发送 per-process 状态同步消息的逻辑
+此前曾在特定环境中试验过延迟重新选择的 workaround。实际使用表明它未能解决输入法切换问题，因此已从产品代码移除；关于固定延迟、重新激活路径和底层机制的结论不再作为实现依据。

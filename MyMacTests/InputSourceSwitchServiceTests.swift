@@ -102,58 +102,6 @@ final class InputSourceSwitchServiceTests: XCTestCase {
         XCTAssertEqual(client.selectedIDs, ["pinyin"])
     }
 
-    func testRefreshCurrentInputSourceReSelectsCurrentInputSource() {
-        let client = MockInputSourceSwitchingClient(
-            current: .pinyin,
-            nonRoman: .pinyin,
-            ascii: .abc,
-            enabled: [.abc, .pinyin]
-        )
-        let service = DefaultInputSourceSwitchService(
-            client: client,
-            diagnosticsService: MockDiagnosticsService()
-        )
-
-        XCTAssertEqual(service.refreshCurrentInputSource(), InputSourceSwitchResult.success)
-        XCTAssertEqual(client.selectedIDs, ["pinyin"])
-    }
-
-    func testRefreshCurrentInputSourceReturnsUnavailableWhenCurrentIsMissing() {
-        let client = MockInputSourceSwitchingClient(
-            current: nil,
-            nonRoman: .pinyin,
-            ascii: .abc,
-            enabled: [.abc, .pinyin]
-        )
-        let service = DefaultInputSourceSwitchService(
-            client: client,
-            diagnosticsService: MockDiagnosticsService()
-        )
-
-        if case .unavailable = service.refreshCurrentInputSource() {
-            XCTAssertTrue(client.selectedIDs.isEmpty)
-        } else {
-            XCTFail("Expected unavailable result")
-        }
-    }
-
-    func testRefreshCurrentInputSourceReturnsSelectionFailedWhenClientRejectsCurrent() {
-        let client = MockInputSourceSwitchingClient(
-            current: .pinyin,
-            nonRoman: .pinyin,
-            ascii: .abc,
-            enabled: [.abc, .pinyin],
-            selectionStatus: OSStatus(paramErr)
-        )
-        let service = DefaultInputSourceSwitchService(
-            client: client,
-            diagnosticsService: MockDiagnosticsService()
-        )
-
-        XCTAssertEqual(service.refreshCurrentInputSource(), InputSourceSwitchResult.selectionFailed(OSStatus(paramErr)))
-        XCTAssertEqual(client.selectedIDs, ["pinyin"])
-    }
-
     func testMockKeepsCurrentInputSourceWhenSelectionFails() {
         let client = MockInputSourceSwitchingClient(
             current: .abc,
@@ -170,7 +118,7 @@ final class InputSourceSwitchServiceTests: XCTestCase {
 }
 
 final class InputSourceSwitchTriggerTests: XCTestCase {
-    func testSuccessfulTriggerSwitchesOnceAndReselectsTwice() {
+    func testSuccessfulTriggerSwitchesOnceWithoutReselecting() {
         let service = MockInputSourceSwitchService()
         let scheduler = ManualInputSourceSwitchScheduler()
         let trigger = InputSourceSwitchTrigger(
@@ -184,16 +132,6 @@ final class InputSourceSwitchTriggerTests: XCTestCase {
         XCTAssertEqual(scheduler.pendingCount, 1)
         scheduler.runNext()
         XCTAssertEqual(service.switchCount, 1)
-        XCTAssertEqual(service.refreshCount, 0)
-        XCTAssertEqual(scheduler.pendingCount, 1)
-
-        scheduler.runNext()
-        XCTAssertEqual(service.refreshCount, 1)
-        XCTAssertEqual(scheduler.recordedDelays, [0.018, 0.018])
-
-        scheduler.runNext()
-        XCTAssertEqual(service.refreshCount, 2)
-        XCTAssertEqual(scheduler.recordedDelays, [0.018, 0.018])
         XCTAssertEqual(scheduler.pendingCount, 0)
     }
 
@@ -211,31 +149,6 @@ final class InputSourceSwitchTriggerTests: XCTestCase {
         scheduler.runAll()
 
         XCTAssertEqual(service.switchCount, 1)
-        XCTAssertEqual(service.refreshCount, 2)
-    }
-
-    func testRefreshFailureStopsRetriesAndAllowsFutureTrigger() {
-        let service = MockInputSourceSwitchService(
-            refreshResults: [.selectionFailed(OSStatus(paramErr))]
-        )
-        let scheduler = ManualInputSourceSwitchScheduler()
-        let trigger = InputSourceSwitchTrigger(
-            inputSourceSwitchService: service,
-            diagnosticsService: MockDiagnosticsService(),
-            scheduler: scheduler
-        )
-
-        trigger.trigger()
-        scheduler.runAll()
-
-        XCTAssertEqual(service.switchCount, 1)
-        XCTAssertEqual(service.refreshCount, 1)
-        XCTAssertEqual(scheduler.pendingCount, 0)
-
-        trigger.trigger()
-        scheduler.runAll()
-
-        XCTAssertEqual(service.switchCount, 2)
     }
 
     func testInitialSwitchFailureAllowsFutureTrigger() {
@@ -253,16 +166,14 @@ final class InputSourceSwitchTriggerTests: XCTestCase {
         scheduler.runAll()
 
         XCTAssertEqual(service.switchCount, 1)
-        XCTAssertEqual(service.refreshCount, 0)
 
         trigger.trigger()
         scheduler.runAll()
 
         XCTAssertEqual(service.switchCount, 2)
-        XCTAssertEqual(service.refreshCount, 2)
     }
 
-    func testCancelPreventsPendingReselectAndAllowsFutureTrigger() {
+    func testCancelPreventsPendingSwitchAndAllowsFutureTrigger() {
         let service = MockInputSourceSwitchService()
         let scheduler = ManualInputSourceSwitchScheduler()
         let trigger = InputSourceSwitchTrigger(
@@ -272,18 +183,13 @@ final class InputSourceSwitchTriggerTests: XCTestCase {
         )
 
         trigger.trigger()
-        scheduler.runNext()
-        XCTAssertEqual(service.switchCount, 1)
-        XCTAssertEqual(scheduler.pendingCount, 1)
-
         trigger.cancel()
         scheduler.runAll()
-        XCTAssertEqual(service.refreshCount, 0)
+        XCTAssertEqual(service.switchCount, 0)
 
         trigger.trigger()
         scheduler.runAll()
-        XCTAssertEqual(service.switchCount, 2)
-        XCTAssertEqual(service.refreshCount, 2)
+        XCTAssertEqual(service.switchCount, 1)
     }
 }
 
@@ -346,16 +252,12 @@ private struct MockDiagnosticsService: DiagnosticsService {
 
 private final class MockInputSourceSwitchService: InputSourceSwitchService, @unchecked Sendable {
     private var switchResults: [InputSourceSwitchResult]
-    private var refreshResults: [InputSourceSwitchResult]
     private(set) var switchCount = 0
-    private(set) var refreshCount = 0
 
     init(
-        switchResults: [InputSourceSwitchResult] = [],
-        refreshResults: [InputSourceSwitchResult] = []
+        switchResults: [InputSourceSwitchResult] = []
     ) {
         self.switchResults = switchResults
-        self.refreshResults = refreshResults
     }
 
     func switchRomanNonRoman() -> InputSourceSwitchResult {
@@ -366,29 +268,16 @@ private final class MockInputSourceSwitchService: InputSourceSwitchService, @unc
         return switchResults.removeFirst()
     }
 
-    func refreshCurrentInputSource() -> InputSourceSwitchResult {
-        refreshCount += 1
-        guard !refreshResults.isEmpty else {
-            return .success
-        }
-        return refreshResults.removeFirst()
-    }
 }
 
 private final class ManualInputSourceSwitchScheduler: InputSourceSwitchScheduling, @unchecked Sendable {
     private var actions: [@Sendable () -> Void] = []
-    private(set) var recordedDelays: [TimeInterval] = []
 
     var pendingCount: Int {
         actions.count
     }
 
     func async(_ action: @escaping @Sendable () -> Void) {
-        actions.append(action)
-    }
-
-    func asyncAfter(_ delay: TimeInterval, _ action: @escaping @Sendable () -> Void) {
-        recordedDelays.append(delay)
         actions.append(action)
     }
 

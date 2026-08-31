@@ -346,19 +346,8 @@ struct InputSourceSwitchShortcut {
     }
 }
 
-struct InputSourceSwitchRetryPolicy: Equatable, Sendable {
-    var reselectDelay: TimeInterval
-    var reselectAttempts: Int
-
-    static let defaultPolicy = Self(
-        reselectDelay: 0.018,
-        reselectAttempts: 2
-    )
-}
-
 protocol InputSourceSwitchScheduling: Sendable {
     func async(_ action: @escaping @Sendable () -> Void)
-    func asyncAfter(_ delay: TimeInterval, _ action: @escaping @Sendable () -> Void)
 }
 
 struct MainQueueInputSourceSwitchScheduler: InputSourceSwitchScheduling {
@@ -366,16 +355,12 @@ struct MainQueueInputSourceSwitchScheduler: InputSourceSwitchScheduling {
         DispatchQueue.main.async(execute: action)
     }
 
-    func asyncAfter(_ delay: TimeInterval, _ action: @escaping @Sendable () -> Void) {
-        DispatchQueue.main.asyncAfter(deadline: .now() + delay, execute: action)
-    }
 }
 
 final class InputSourceSwitchTrigger: @unchecked Sendable {
     private let inputSourceSwitchService: InputSourceSwitchService
     private let diagnosticsService: DiagnosticsService
     private let scheduler: InputSourceSwitchScheduling
-    private let retryPolicy: InputSourceSwitchRetryPolicy
     private let stateLock = NSLock()
     private var isSwitching = false
     private var generation = 0
@@ -383,13 +368,11 @@ final class InputSourceSwitchTrigger: @unchecked Sendable {
     init(
         inputSourceSwitchService: InputSourceSwitchService,
         diagnosticsService: DiagnosticsService,
-        scheduler: InputSourceSwitchScheduling = MainQueueInputSourceSwitchScheduler(),
-        retryPolicy: InputSourceSwitchRetryPolicy = .defaultPolicy
+        scheduler: InputSourceSwitchScheduling = MainQueueInputSourceSwitchScheduler()
     ) {
         self.inputSourceSwitchService = inputSourceSwitchService
         self.diagnosticsService = diagnosticsService
         self.scheduler = scheduler
-        self.retryPolicy = retryPolicy
     }
 
     func trigger() {
@@ -414,11 +397,7 @@ final class InputSourceSwitchTrigger: @unchecked Sendable {
 
             switch inputSourceSwitchService.switchRomanNonRoman() {
             case .success:
-                if retryPolicy.reselectAttempts > 0 {
-                    scheduleReselect(attempt: 1, sessionGeneration: sessionGeneration)
-                } else {
-                    finish(sessionGeneration: sessionGeneration)
-                }
+                finish(sessionGeneration: sessionGeneration)
             case .unavailable(let reason):
                 diagnosticsService.error(
                     "Input source switch unavailable: \(reason)",
@@ -440,41 +419,6 @@ final class InputSourceSwitchTrigger: @unchecked Sendable {
         generation += 1
         isSwitching = false
         stateLock.unlock()
-    }
-
-    private func scheduleReselect(attempt: Int, sessionGeneration: Int) {
-        scheduler.asyncAfter(retryPolicy.reselectDelay) { [inputSourceSwitchService, diagnosticsService, weak self] in
-            guard let self else { return }
-
-            guard isCurrentSession(sessionGeneration) else {
-                return
-            }
-
-            switch inputSourceSwitchService.refreshCurrentInputSource() {
-            case .success:
-                break
-            case .unavailable(let reason):
-                diagnosticsService.error(
-                    "Input source re-select attempt \(attempt) unavailable: \(reason)",
-                    category: .keyboardMapping
-                )
-                finish(sessionGeneration: sessionGeneration)
-                return
-            case .selectionFailed(let status):
-                diagnosticsService.error(
-                    "Input source re-select attempt \(attempt) failed: status=\(status)",
-                    category: .keyboardMapping
-                )
-                finish(sessionGeneration: sessionGeneration)
-                return
-            }
-
-            if attempt < retryPolicy.reselectAttempts {
-                scheduleReselect(attempt: attempt + 1, sessionGeneration: sessionGeneration)
-            } else {
-                finish(sessionGeneration: sessionGeneration)
-            }
-        }
     }
 
     private func isCurrentSession(_ sessionGeneration: Int) -> Bool {
