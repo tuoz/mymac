@@ -335,3 +335,93 @@ CGEventTap → EventTapController.handle()
 目标仍优先使用系统维护的 non-Roman 输入源，并在该信息不可用时基于 ASCII capable 属性回退。一次选择成功或失败后，本次触发立即结束；实现不会延迟重新选择当前输入源。
 
 此前曾在特定环境中试验过延迟重新选择的 workaround。实际使用表明它未能解决输入法切换问题，因此已从产品代码移除；关于固定延迟、重新激活路径和底层机制的结论不再作为实现依据。
+
+> 更新（2026-10-25）：`TISSelectInputSource(target)` 已改为回退路径，主路径改为向键盘焦点进程的 TSM port 发送选择请求，详见 12.6。
+
+---
+
+## 12. macOS 27 复查：偶发切换不生效（2026-10-25）
+
+> 环境：macOS 27.0.1 (26A434)，arm64。12.1–12.5 为资料调研与符号探测；实施状态见 12.6。
+
+### 12.1 现状：系统层面未修复
+
+后台进程调用 `TISSelectInputSource` 切换到 CJKV 输入法时，"菜单栏已变、实际输入仍是旧输入法"的问题在 macOS 26 与 27 上依然存在，未见 Apple 修复记录。
+
+- [rime/squirrel#1179](https://github.com/rime/squirrel/issues/1179)（macOS 27.0, 26A428）：先在 ABC 下输入任意字母，再用 `TISSelectInputSource` 切到鼠须管，40 次中 21 次失败，失败时客户端完全收不到 `setMarkedText`，而所有系统可见的输入源标识均显示已切换。150ms 后再次选择、重新激活前台 app 均无效。这与第 11 节"延迟 re-select 无效"的实际结论一致。
+- [rime/squirrel#1140](https://github.com/rime/squirrel/issues/1140)（macOS 26.5.1）：程序化切走时不再派发 `deactivateServer`，候选框残留、composition 不上屏；`kTISNotifySelectedKeyboardInputSourceChanged` 仍正常派发。
+- [Karabiner-Elements 文档](https://karabiner-elements.pqrs.org/docs/json/complex-modifications-manipulator-definition/to/select-input-source/)仍注明 CJKV 的 `select_input_source` 可能失败，建议改发系统切换快捷键。
+
+### 12.2 根因的新解释
+
+macism 在 [f07fc94](https://github.com/laishulu/macism/commit/f07fc94)（2026-10-21）中给出的解释：
+
+- 没有键盘焦点的进程调用 `TISSelectInputSource` 时，系统先在全局提交新输入源，然后才通知持有焦点的 app。
+- 第三方输入法因此先收到 `activateServer`，1–2ms 后又收到 `deactivateServer`。
+- 通过菜单栏输入法菜单切换时没有这次提前提交，因此切换能稳定生效。
+
+MyMac 作为后台 event tap 进程调用 TIS，属于同一种情况。
+
+### 12.3 现有绕过方案对比
+
+| 方案 | 机制 | 代价 / 风险 |
+|------|------|-------------|
+| **TSM port 直发（新）** | 用 `CPSGetKeyFocusProcess` 找到接收键盘事件的进程，向其 `com.apple.tsm.portname` per-process port 同步发送消息 ID 7，载荷为 `_CreateFlattenedInputSource` 序列化的输入源（与输入法菜单相同的路径） | 依赖私有符号；方案新，长期稳定性未经检验 |
+| 临时窗口抢焦点 | 切换后让一个小窗口短暂成为 key window 再交还焦点（macism TemporaryWindow、Input Source Pro "切换焦点"）；macism 在 Tahoe 上把等待时间从 1ms 提高到 150ms | 当前窗口会失焦，Alfred / Spotlight 等面板会被关闭；macOS 27 上仍有失败报告 |
+| 模拟系统快捷键 | 发送"选择上一个输入源"快捷键，由系统完成切换 | macOS 26 起需使用 `.hidSystemState` 事件源，并让 keyUp 比 keyDown 晚约 50ms 发出（见 cmd-ime 2.4.10）；仅适合两个输入源之间切换 |
+
+macism 的 TSM 路径核心逻辑（`TSMUtils.swift`）：
+
+```swift
+let request = ["tsmInputSourceSelectedInpSrcKey": flattened] as CFDictionary
+let port = CFMessagePortCreatePerProcessRemote(nil, "com.apple.tsm.portname", keyFocusPID)
+CFMessagePortSendRequest(port, 7, plistData(request), 0.3, 0.3, defaultMode, &reply)
+// reply["tsmInputModeReplyToServerErrorKey"] != 0 视为失败，回退 TISSelectInputSource
+```
+
+### 12.4 本机符号探测
+
+在 macOS 27.0.1 上用 `dlsym(RTLD_DEFAULT, …)` 探测，以下符号全部可解析，且可为前台 app 创建 `com.apple.tsm.portname` remote port：
+
+- `CPSGetKeyFocusProcess`
+- `GetProcessPID`
+- `CFMessagePortCreatePerProcessRemote`
+- `_CreateFlattenedInputSource`
+- `TISCopyCurrentNonRomanInputSourceForRomanSwitch`
+
+尚未实际发送 ID 7 消息，也未做"切换后立即打字"的失败率测试。
+
+### 12.5 待验证的方向
+
+若后续实施，候选做法是：在 `CarbonInputSourceSwitchingClient.selectInputSource` 中，目标为非 ASCII capable 输入源时先走 TSM port 路径，失败再回退 `TISSelectInputSource`。目标选择逻辑（第 6 节）保持不变。
+
+验证重点：
+
+1. 复现 #1179 的高失败率场景：ABC 下先输入字母 → `Fn + Space` → 立即输入拼音，统计失败率并与当前实现对比。
+2. 覆盖系统拼音与第三方输入法（如鼠须管、微信输入法）。
+3. 确认焦点不变，Spotlight / Alfred 等面板不被关闭。
+4. 确认 TSM 请求的 0.3s 超时不会阻塞主线程上的其他工作。
+
+### 12.6 实施状态（2026-10-25）
+
+已按 12.5 的方向实施：
+
+- `FocusedAppInputSourceSelector`（`MyMac/Core/Services/InputSourceSwitchService.swift`）负责向键盘焦点进程的 TSM port 发送消息 ID 7。私有符号在首次使用时解析并缓存；请求超时为 0.3s；回复中只有显式的非零 `tsmInputModeReplyToServerErrorKey` 视为失败。
+- `CarbonInputSourceSwitchingClient.selectInputSource` 对所有目标都先走 TSM 路径；符号缺失、找不到焦点进程、焦点进程是 MyMac 自身或请求失败时，记录原因并回退到 `TISSelectInputSource`。
+- 目标选择逻辑、事件流与 `InputSourceSwitchTrigger` 均未改动。切换在主队列执行，event tap 在独立 worker 线程，同步请求不会阻塞按键处理。
+
+已验证：
+
+- 单元测试全部通过（含请求 plist 构造与回复解析）。
+- 冒烟测试：在 macOS 27.0.1 上对焦点 app 重选当前输入源（简体拼音），TSM 请求被接受，耗时约 5ms。
+
+待验证：12.5 列出的手动对比测试（切换后立即打字的失败率、反方向候选框残留、Spotlight 焦点保持、第三方输入法）。
+
+### 12.7 参考资料
+
+- [laishulu/macism f07fc94 — select CJKV sources via the app's TSM port](https://github.com/laishulu/macism/commit/f07fc94)
+- [laishulu/macism 8d12f3d — Raise default wait time from 1ms to 150ms](https://github.com/laishulu/macism/commit/8d12f3d344d11d76fac3b576ddf0ab0db5c8026f)
+- [rime/squirrel#1179](https://github.com/rime/squirrel/issues/1179)、[rime/squirrel#1140](https://github.com/rime/squirrel/issues/1140)
+- [Input Source Pro changelog](https://inputsource.pro/changelog)（2026-05 新增"切换焦点" CJKV 修复模式）
+- [cmd-ime CHANGELOG 2.4.10](https://github.com/agiletec-inc/cmd-ime/blob/main/CHANGELOG.md)
+- [Apple Community: macOS 26 Control + Space input switch fails intermittently](https://discussions.apple.com/thread/256254361)

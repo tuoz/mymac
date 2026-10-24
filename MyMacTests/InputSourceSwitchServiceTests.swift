@@ -296,3 +296,40 @@ private final class ManualInputSourceSwitchScheduler: InputSourceSwitchSchedulin
         }
     }
 }
+
+final class FocusedAppInputSourceSelectorTests: XCTestCase {
+    func testRequestDataWrapsFlattenedSourceUnderRequestKey() throws {
+        let flattened = ["id": "pinyin"] as NSDictionary
+        let data = try XCTUnwrap(FocusedAppInputSourceSelector.makeRequestData(flattened: flattened))
+        let request = try XCTUnwrap(
+            PropertyListSerialization.propertyList(from: data, format: nil) as? [String: Any]
+        )
+
+        XCTAssertEqual(request.count, 1)
+        XCTAssertEqual(request[FocusedAppInputSourceSelector.requestKey] as? NSDictionary, flattened)
+    }
+
+    func testMissingReplyIsSuccessful() {
+        XCTAssertTrue(FocusedAppInputSourceSelector.isSuccessfulReply(nil))
+    }
+
+    func testReplyWithZeroErrorIsSuccessful() throws {
+        XCTAssertTrue(FocusedAppInputSourceSelector.isSuccessfulReply(try replyData(error: 0)))
+    }
+
+    func testReplyWithNonZeroErrorIsRejected() throws {
+        XCTAssertFalse(FocusedAppInputSourceSelector.isSuccessfulReply(try replyData(error: -50)))
+    }
+
+    func testUnparseableReplyIsSuccessful() {
+        XCTAssertTrue(FocusedAppInputSourceSelector.isSuccessfulReply(Data("not a plist".utf8)))
+    }
+
+    private func replyData(error: Int) throws -> Data {
+        try PropertyListSerialization.data(
+            fromPropertyList: [FocusedAppInputSourceSelector.replyErrorKey: error],
+            format: .xml,
+            options: 0
+        )
+    }
+}
