@@ -202,7 +202,7 @@ final class AppCoordinator {
 
     private func reconcileKeyboardMappingState() async {
         let configuration = KeyboardMappingConfiguration(
-            isArrowKeyMappingEnabled: appState.isKeyboardMappingEnabled,
+            isKeyMappingEnabled: appState.isKeyboardMappingEnabled,
             isInputSourceSwitchingEnabled: appState.isInputSourceSwitchingEnabled
         )
 

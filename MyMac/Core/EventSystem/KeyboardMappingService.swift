@@ -10,16 +10,16 @@ protocol KeyboardMappingService: Sendable {
 }
 
 struct KeyboardMappingConfiguration: Equatable, Sendable {
-    var isArrowKeyMappingEnabled: Bool
+    var isKeyMappingEnabled: Bool
     var isInputSourceSwitchingEnabled: Bool
 
     static let allEnabled = Self(
-        isArrowKeyMappingEnabled: true,
+        isKeyMappingEnabled: true,
         isInputSourceSwitchingEnabled: true
     )
 
     var shouldListenForKeyboardEvents: Bool {
-        isArrowKeyMappingEnabled || isInputSourceSwitchingEnabled
+        isKeyMappingEnabled || isInputSourceSwitchingEnabled
     }
 }
 
@@ -271,7 +271,7 @@ private final class EventTapController: NSObject {
             return nil
         }
 
-        guard currentConfiguration.isArrowKeyMappingEnabled,
+        guard currentConfiguration.isKeyMappingEnabled,
               let payload = translator.translate(
                   eventType: eventType,
                   keyCode: event.keyboardKeyCode,
@@ -474,7 +474,7 @@ struct KeyboardEventTranslator {
         // on the event itself, so matching merges the event flags with tracked state.
         let effectiveFlags = Self.effectiveFlags(eventFlags: eventFlags, trackedFlags: trackedFlags)
         guard effectiveFlags.contains(.maskSecondaryFn),
-              let targetKeyCode = Self.mappedArrowKeyCode(for: keyCode) else {
+              let targetKeyCode = Self.mappedKeyCode(for: keyCode) else {
             return nil
         }
 
@@ -528,8 +528,10 @@ struct KeyboardEventTranslator {
         return outputFlags
     }
 
-    private static func mappedArrowKeyCode(for keyCode: CGKeyCode) -> CGKeyCode? {
+    private static func mappedKeyCode(for keyCode: CGKeyCode) -> CGKeyCode? {
         switch Int(keyCode) {
+        case kVK_Delete:
+            return CGKeyCode(kVK_ForwardDelete)
         case kVK_ANSI_H:
             return CGKeyCode(kVK_LeftArrow)
         case kVK_ANSI_J:

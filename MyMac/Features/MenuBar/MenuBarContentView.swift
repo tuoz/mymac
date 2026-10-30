@@ -20,7 +20,7 @@ struct MenuBarContentView: View {
 
             Divider()
 
-            Toggle("启用方向键映射", isOn: Binding(
+            Toggle("启用键位映射", isOn: Binding(
                 get: { appState.isKeyboardMappingEnabled },
                 set: { newValue in
                     Task {

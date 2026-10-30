@@ -275,7 +275,7 @@ final class AppCoordinatorPermissionFlowTests: XCTestCase {
         XCTAssertEqual(
             keyboardMappingService.configurations.last,
             KeyboardMappingConfiguration(
-                isArrowKeyMappingEnabled: true,
+                isKeyMappingEnabled: true,
                 isInputSourceSwitchingEnabled: false
             )
         )
@@ -309,7 +309,7 @@ final class AppCoordinatorPermissionFlowTests: XCTestCase {
         XCTAssertEqual(
             keyboardMappingService.configurations.last,
             KeyboardMappingConfiguration(
-                isArrowKeyMappingEnabled: false,
+                isKeyMappingEnabled: false,
                 isInputSourceSwitchingEnabled: true
             )
         )

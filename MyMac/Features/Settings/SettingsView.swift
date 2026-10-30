@@ -32,7 +32,7 @@ private struct GeneralSettingsView: View {
 
     var body: some View {
         Form {
-            Toggle("启用方向键映射", isOn: Binding(
+            Toggle("启用键位映射", isOn: Binding(
                 get: { appState.isKeyboardMappingEnabled },
                 set: { newValue in
                     Task {
@@ -111,7 +111,7 @@ private struct AboutSettingsView: View {
             Text("MyMac")
                 .font(.largeTitle)
                 .bold()
-            Text("面向 macOS 的后台键盘工具，支持 Fn + H/J/K/L 方向键映射与 Fn + Space 输入法切换。")
+            Text("面向 macOS 的后台键盘工具，支持 Fn + H/J/K/L 方向键映射、Fn + Backspace 向前删除与 Fn + Space 输入法切换。")
                 .foregroundStyle(.secondary)
             Text("版本 \(Bundle.main.object(forInfoDictionaryKey: "CFBundleShortVersionString") as? String ?? "1.0")")
                 .font(.footnote)

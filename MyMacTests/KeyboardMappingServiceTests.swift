@@ -5,6 +5,59 @@ import XCTest
 final class KeyboardEventTranslatorTests: XCTestCase {
     private let translator = KeyboardEventTranslator()
 
+    func testMapsFnBackspacePressRepeatAndReleaseToForwardDelete() {
+        for (eventType, isAutorepeat) in [(CGEventType.keyDown, false), (.keyDown, true), (.keyUp, false)] {
+            let payload = translator.translate(
+                eventType: eventType,
+                keyCode: CGKeyCode(kVK_Delete),
+                eventFlags: [.maskSecondaryFn, .maskShift, .maskAlternate],
+                trackedFlags: [],
+                isAutorepeat: isAutorepeat
+            )
+
+            XCTAssertEqual(payload, InjectedKeyEventPayload(
+                targetKeyCode: CGKeyCode(kVK_ForwardDelete),
+                outputFlags: [.maskShift, .maskAlternate],
+                isKeyDown: eventType == .keyDown,
+                isAutorepeat: isAutorepeat
+            ))
+        }
+    }
+
+    func testMapsBackspaceUsingTrackedFnState() {
+        let payload = translator.translate(
+            eventType: .keyDown,
+            keyCode: CGKeyCode(kVK_Delete),
+            eventFlags: [],
+            trackedFlags: [.maskSecondaryFn],
+            isAutorepeat: false
+        )
+
+        XCTAssertEqual(payload, InjectedKeyEventPayload(
+            targetKeyCode: CGKeyCode(kVK_ForwardDelete),
+            outputFlags: [],
+            isKeyDown: true,
+            isAutorepeat: false
+        ))
+    }
+
+    func testPassesThroughOrdinaryBackspaceAndNativeForwardDelete() {
+        for eventType in [CGEventType.keyDown, .keyUp] {
+            for (keyCode, flags) in [
+                (kVK_Delete, CGEventFlags()),
+                (kVK_ForwardDelete, CGEventFlags.maskSecondaryFn),
+            ] {
+                XCTAssertNil(translator.translate(
+                    eventType: eventType,
+                    keyCode: CGKeyCode(keyCode),
+                    eventFlags: flags,
+                    trackedFlags: [],
+                    isAutorepeat: false
+                ))
+            }
+        }
+    }
+
     func testMapsFnHKeyDownToLeftArrow() {
         let payload = translator.translate(
             eventType: .keyDown,
