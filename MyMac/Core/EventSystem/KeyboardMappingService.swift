@@ -266,30 +266,13 @@ private final class EventTapController: NSObject {
             return Unmanaged.passUnretained(event)
         }
 
-        let currentConfiguration = currentConfiguration()
-
-        if currentConfiguration.isInputSourceSwitchingEnabled,
-           let inputSourceSwitchAction = InputSourceSwitchShortcut.action(
-               eventType: eventType,
-               keyCode: event.keyboardKeyCode,
-               eventFlags: event.flags,
-               trackedFlags: modifierTracker.activeFlags,
-               isAutorepeat: event.keyboardIsAutorepeat
-           ) {
-            if inputSourceSwitchAction.shouldTriggerSwitch {
-                inputSourceSwitchTrigger.trigger()
-            }
-
-            return nil
-        }
-
         let decision = keyPressRouter.route(
             eventType: eventType,
             keyCode: event.keyboardKeyCode,
             eventFlags: event.flags,
             trackedFlags: modifierTracker.activeFlags,
             isAutorepeat: event.keyboardIsAutorepeat,
-            configuration: currentConfiguration,
+            configuration: currentConfiguration(),
             inject: injectMappedKeyEvent
         )
 
@@ -297,6 +280,9 @@ private final class EventTapController: NSObject {
         case .passThrough:
             return Unmanaged.passUnretained(event)
         case .consume:
+            return nil
+        case .consumeAndSwitchInputSource:
+            inputSourceSwitchTrigger.trigger()
             return nil
         }
     }
@@ -342,26 +328,16 @@ private final class EventTapController: NSObject {
     }
 }
 
-enum InputSourceSwitchShortcutAction: Equatable {
-    case consumeOnly
-    case consumeAndSwitch
-
-    var shouldTriggerSwitch: Bool {
-        self == .consumeAndSwitch
-    }
-}
-
 struct InputSourceSwitchShortcut {
-    static func action(
-        eventType: CGEventType,
+    /// Whether an initial key down is Fn + Space. Its autorepeats and key up are
+    /// handled by `KeyPressRouter` from the decision made on this key down.
+    static func matches(
         keyCode: CGKeyCode,
         eventFlags: CGEventFlags,
-        trackedFlags: CGEventFlags,
-        isAutorepeat: Bool
-    ) -> InputSourceSwitchShortcutAction? {
-        guard eventType == .keyDown || eventType == .keyUp,
-              keyCode == CGKeyCode(kVK_Space) else {
-            return nil
+        trackedFlags: CGEventFlags
+    ) -> Bool {
+        guard keyCode == CGKeyCode(kVK_Space) else {
+            return false
         }
 
         let effectiveFlags = KeyboardEventTranslator.effectiveFlags(
@@ -369,15 +345,7 @@ struct InputSourceSwitchShortcut {
             trackedFlags: trackedFlags
         )
 
-        guard effectiveFlags == [.maskSecondaryFn] else {
-            return nil
-        }
-
-        if eventType == .keyDown, !isAutorepeat {
-            return .consumeAndSwitch
-        }
-
-        return .consumeOnly
+        return effectiveFlags == [.maskSecondaryFn]
     }
 }
 
@@ -584,6 +552,7 @@ struct KeyboardEventTranslator {
 enum KeyPressDecision: Equatable {
     case passThrough
     case consume
+    case consumeAndSwitchInputSource
 }
 
 /// Decides how a physical key press is handled on its initial key down and replays
@@ -592,6 +561,7 @@ enum KeyPressDecision: Equatable {
 struct KeyPressRouter {
     enum Route: Equatable {
         case mapped(CGKeyCode)
+        case inputSourceShortcut
     }
 
     private let translator = KeyboardEventTranslator()
@@ -621,17 +591,21 @@ struct KeyPressRouter {
                 inject: inject
             )
         case .keyDown:
-            guard case .mapped(let targetKeyCode)? = activeRoutes[keyCode] else {
+            switch activeRoutes[keyCode] {
+            case .mapped(let targetKeyCode):
+                _ = inject(Self.payload(
+                    targetKeyCode: targetKeyCode,
+                    eventFlags: eventFlags,
+                    trackedFlags: trackedFlags,
+                    isKeyDown: true,
+                    isAutorepeat: true
+                ))
+                return .consume
+            case .inputSourceShortcut:
+                return .consume
+            case nil:
                 return .passThrough
             }
-            _ = inject(Self.payload(
-                targetKeyCode: targetKeyCode,
-                eventFlags: eventFlags,
-                trackedFlags: trackedFlags,
-                isKeyDown: true,
-                isAutorepeat: true
-            ))
-            return .consume
         case .keyUp:
             guard let activeRoute = activeRoutes.removeValue(forKey: keyCode) else {
                 return .passThrough
@@ -679,6 +653,12 @@ struct KeyPressRouter {
         configuration: KeyboardMappingConfiguration,
         inject: (InjectedKeyEventPayload) -> Bool
     ) -> KeyPressDecision {
+        if configuration.isInputSourceSwitchingEnabled,
+           InputSourceSwitchShortcut.matches(keyCode: keyCode, eventFlags: eventFlags, trackedFlags: trackedFlags) {
+            activeRoutes[keyCode] = .inputSourceShortcut
+            return .consumeAndSwitchInputSource
+        }
+
         guard configuration.isKeyMappingEnabled,
               let payload = translator.translate(
                   eventType: .keyDown,
@@ -710,6 +690,9 @@ struct KeyPressRouter {
                 isKeyDown: false,
                 isAutorepeat: false
             ))
+        case .inputSourceShortcut:
+            // Nothing was injected for the shortcut, so there is no key up to send.
+            break
         }
     }
 

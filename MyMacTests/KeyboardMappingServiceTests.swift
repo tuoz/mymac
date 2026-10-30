@@ -459,6 +459,42 @@ final class KeyPressRouterTests: XCTestCase {
         XCTAssertEqual(router.activeRoutes, [CGKeyCode(kVK_Delete): .mapped(CGKeyCode(kVK_ForwardDelete))])
     }
 
+    func testFnSpaceSwitchesOnceAndConsumesItsWholePress() {
+        heldFlags = [.maskSecondaryFn]
+
+        XCTAssertEqual(send(.keyDown, kVK_Space), .consumeAndSwitchInputSource)
+        XCTAssertEqual(send(.keyDown, kVK_Space, isAutorepeat: true), .consume)
+        heldFlags = []
+        XCTAssertEqual(send(.keyUp, kVK_Space), .consume)
+
+        XCTAssertEqual(injected, [])
+        XCTAssertEqual(router.activeRoutes, [:])
+    }
+
+    func testSpacePressedBeforeFnPassesThroughForWholePress() {
+        XCTAssertEqual(send(.keyDown, kVK_Space), .passThrough)
+        heldFlags = [.maskSecondaryFn]
+        XCTAssertEqual(send(.keyDown, kVK_Space, isAutorepeat: true), .passThrough)
+        XCTAssertEqual(send(.keyUp, kVK_Space), .passThrough)
+    }
+
+    func testFnSpaceDisabledPassesThrough() {
+        configuration.isInputSourceSwitchingEnabled = false
+        heldFlags = [.maskSecondaryFn]
+
+        XCTAssertEqual(send(.keyDown, kVK_Space), .passThrough)
+        XCTAssertEqual(send(.keyUp, kVK_Space), .passThrough)
+    }
+
+    func testReleaseAllDropsShortcutRouteWithoutInjecting() {
+        heldFlags = [.maskSecondaryFn]
+        send(.keyDown, kVK_Space)
+
+        XCTAssertEqual(router.releaseAll(trackedFlags: [], inject: record), [CGKeyCode(kVK_Space)])
+        XCTAssertEqual(injected, [])
+        XCTAssertEqual(router.activeRoutes, [:])
+    }
+
     override func setUp() {
         super.setUp()
         resetState()
@@ -506,64 +542,36 @@ final class KeyPressRouterTests: XCTestCase {
 }
 
 final class InputSourceSwitchShortcutTests: XCTestCase {
-    func testFnSpaceKeyDownTriggersInputSourceSwitch() {
-        let action = InputSourceSwitchShortcut.action(
-            eventType: .keyDown,
+    func testMatchesFnSpace() {
+        XCTAssertTrue(InputSourceSwitchShortcut.matches(
             keyCode: CGKeyCode(kVK_Space),
             eventFlags: [.maskSecondaryFn],
-            trackedFlags: [],
-            isAutorepeat: false
-        )
-
-        XCTAssertEqual(action, .consumeAndSwitch)
+            trackedFlags: []
+        ))
     }
 
-    func testFnSpaceKeyUpOnlyConsumesEvent() {
-        let action = InputSourceSwitchShortcut.action(
-            eventType: .keyUp,
-            keyCode: CGKeyCode(kVK_Space),
-            eventFlags: [.maskSecondaryFn],
-            trackedFlags: [],
-            isAutorepeat: false
-        )
-
-        XCTAssertEqual(action, .consumeOnly)
-    }
-
-    func testFnSpaceAutorepeatOnlyConsumesEvent() {
-        let action = InputSourceSwitchShortcut.action(
-            eventType: .keyDown,
-            keyCode: CGKeyCode(kVK_Space),
-            eventFlags: [.maskSecondaryFn],
-            trackedFlags: [],
-            isAutorepeat: true
-        )
-
-        XCTAssertEqual(action, .consumeOnly)
-    }
-
-    func testCommandFnSpaceDoesNotTriggerInputSourceSwitch() {
-        let action = InputSourceSwitchShortcut.action(
-            eventType: .keyDown,
+    func testCommandFnSpaceDoesNotMatch() {
+        XCTAssertFalse(InputSourceSwitchShortcut.matches(
             keyCode: CGKeyCode(kVK_Space),
             eventFlags: [.maskCommand, .maskSecondaryFn],
-            trackedFlags: [],
-            isAutorepeat: false
-        )
+            trackedFlags: []
+        ))
+    }
 
-        XCTAssertNil(action)
+    func testSpaceWithoutFnDoesNotMatch() {
+        XCTAssertFalse(InputSourceSwitchShortcut.matches(
+            keyCode: CGKeyCode(kVK_Space),
+            eventFlags: [],
+            trackedFlags: []
+        ))
     }
 
     func testUsesTrackedFnForSpaceShortcut() {
-        let action = InputSourceSwitchShortcut.action(
-            eventType: .keyDown,
+        XCTAssertTrue(InputSourceSwitchShortcut.matches(
             keyCode: CGKeyCode(kVK_Space),
             eventFlags: [],
-            trackedFlags: [.maskSecondaryFn],
-            isAutorepeat: false
-        )
-
-        XCTAssertEqual(action, .consumeAndSwitch)
+            trackedFlags: [.maskSecondaryFn]
+        ))
     }
 }
 
