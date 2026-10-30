@@ -56,7 +56,6 @@ actor CGEventTapKeyboardMappingService: KeyboardMappingService {
 private final class EventTapController: NSObject {
     private let inputSourceSwitchTrigger: InputSourceSwitchTrigger
     private let diagnosticsService: DiagnosticsService
-    private let translator = KeyboardEventTranslator()
     private let executor = KeyboardActionExecutor()
     private let stateLock = NSLock()
 
@@ -67,6 +66,7 @@ private final class EventTapController: NSObject {
     private var eventTap: CFMachPort?
     private var runLoopSource: CFRunLoopSource?
     private var modifierTracker = ModifierStateTracker()
+    private var keyPressRouter = KeyPressRouter()
 
     init(
         inputSourceSwitchService: InputSourceSwitchService,
@@ -100,6 +100,7 @@ private final class EventTapController: NSObject {
 
         status = .starting
         modifierTracker.reset()
+        keyPressRouter.reset()
 
         let semaphore = DispatchSemaphore(value: 0)
         startupSemaphore = semaphore
@@ -193,6 +194,10 @@ private final class EventTapController: NSObject {
     private func stopEventLoop() {
         inputSourceSwitchTrigger.cancel()
 
+        // Best effort: the original key ups of these keys will pass through unmapped once
+        // the tap is gone, but the injected key downs still get their key ups.
+        releaseActiveKeyPresses(where: { _ in true }, reason: "before stopping event tap")
+
         if let tap = eventTap {
             CGEvent.tapEnable(tap: tap, enable: false)
             CFMachPortInvalidate(tap)
@@ -204,6 +209,7 @@ private final class EventTapController: NSObject {
         eventTap = nil
         runLoopSource = nil
         modifierTracker.reset()
+        keyPressRouter.reset()
 
         stateLock.lock()
         workerThread = nil
@@ -220,6 +226,12 @@ private final class EventTapController: NSObject {
             diagnosticsService.log("Event tap disabled by timeout; attempting re-enable", category: .keyboardMapping)
             if let tap = eventTap {
                 CGEvent.tapEnable(tap: tap, enable: true)
+                // Key ups may have been missed while the tap was disabled; only close the
+                // presses whose physical key is no longer held.
+                releaseActiveKeyPresses(
+                    where: { !CGEventSource.keyState(.hidSystemState, key: $0) },
+                    reason: "after tap timeout"
+                )
                 stateLock.lock()
                 status = .running
                 stateLock.unlock()
@@ -271,23 +283,46 @@ private final class EventTapController: NSObject {
             return nil
         }
 
-        guard currentConfiguration.isKeyMappingEnabled,
-              let payload = translator.translate(
-                  eventType: eventType,
-                  keyCode: event.keyboardKeyCode,
-                  eventFlags: event.flags,
-                  trackedFlags: modifierTracker.activeFlags,
-                  isAutorepeat: event.keyboardIsAutorepeat
-              ) else {
-            return Unmanaged.passUnretained(event)
-        }
+        let decision = keyPressRouter.route(
+            eventType: eventType,
+            keyCode: event.keyboardKeyCode,
+            eventFlags: event.flags,
+            trackedFlags: modifierTracker.activeFlags,
+            isAutorepeat: event.keyboardIsAutorepeat,
+            configuration: currentConfiguration,
+            inject: injectMappedKeyEvent
+        )
 
-        if executor.execute(payload, eventMarker: KeyboardEventTranslator.eventMarker) {
+        switch decision {
+        case .passThrough:
+            return Unmanaged.passUnretained(event)
+        case .consume:
             return nil
+        }
+    }
+
+    private func injectMappedKeyEvent(_ payload: InjectedKeyEventPayload) -> Bool {
+        if executor.execute(payload, eventMarker: KeyboardEventTranslator.eventMarker) {
+            return true
         }
 
         diagnosticsService.error("Failed to inject mapped key event", category: .keyboardMapping)
-        return Unmanaged.passUnretained(event)
+        return false
+    }
+
+    private func releaseActiveKeyPresses(where shouldRelease: (CGKeyCode) -> Bool, reason: String) {
+        let releasedKeyCodes = keyPressRouter.releaseRoutes(
+            where: shouldRelease,
+            trackedFlags: modifierTracker.activeFlags,
+            inject: injectMappedKeyEvent
+        )
+
+        if !releasedKeyCodes.isEmpty {
+            diagnosticsService.log(
+                "Released \(releasedKeyCodes.count) active key press(es) \(reason): keyCodes=\(releasedKeyCodes)",
+                category: .keyboardMapping
+            )
+        }
     }
 
     private func currentConfiguration() -> KeyboardMappingConfiguration {
@@ -543,6 +578,154 @@ struct KeyboardEventTranslator {
         default:
             return nil
         }
+    }
+}
+
+enum KeyPressDecision: Equatable {
+    case passThrough
+    case consume
+}
+
+/// Decides how a physical key press is handled on its initial key down and replays
+/// that decision for its autorepeats and key up, so every injected key down gets a
+/// matching key up even when Fn is released first or other keys are pressed meanwhile.
+struct KeyPressRouter {
+    enum Route: Equatable {
+        case mapped(CGKeyCode)
+    }
+
+    private let translator = KeyboardEventTranslator()
+    private(set) var activeRoutes: [CGKeyCode: Route] = [:]
+
+    mutating func route(
+        eventType: CGEventType,
+        keyCode: CGKeyCode,
+        eventFlags: CGEventFlags,
+        trackedFlags: CGEventFlags,
+        isAutorepeat: Bool,
+        configuration: KeyboardMappingConfiguration,
+        inject: (InjectedKeyEventPayload) -> Bool
+    ) -> KeyPressDecision {
+        switch eventType {
+        case .keyDown where !isAutorepeat:
+            // A route that is still active here lost its key up (for example while the
+            // tap was disabled or secure input was on), so close it before deciding again.
+            if let staleRoute = activeRoutes.removeValue(forKey: keyCode) {
+                release(staleRoute, eventFlags: eventFlags, trackedFlags: trackedFlags, inject: inject)
+            }
+            return routeNewPress(
+                keyCode: keyCode,
+                eventFlags: eventFlags,
+                trackedFlags: trackedFlags,
+                configuration: configuration,
+                inject: inject
+            )
+        case .keyDown:
+            guard case .mapped(let targetKeyCode)? = activeRoutes[keyCode] else {
+                return .passThrough
+            }
+            _ = inject(Self.payload(
+                targetKeyCode: targetKeyCode,
+                eventFlags: eventFlags,
+                trackedFlags: trackedFlags,
+                isKeyDown: true,
+                isAutorepeat: true
+            ))
+            return .consume
+        case .keyUp:
+            guard let activeRoute = activeRoutes.removeValue(forKey: keyCode) else {
+                return .passThrough
+            }
+            release(activeRoute, eventFlags: eventFlags, trackedFlags: trackedFlags, inject: inject)
+            return .consume
+        default:
+            return .passThrough
+        }
+    }
+
+    /// Ends the routes whose physical key satisfies `shouldRelease`, injecting the
+    /// matching key up for mapped keys. Returns the released physical key codes.
+    @discardableResult
+    mutating func releaseRoutes(
+        where shouldRelease: (CGKeyCode) -> Bool,
+        trackedFlags: CGEventFlags,
+        inject: (InjectedKeyEventPayload) -> Bool
+    ) -> [CGKeyCode] {
+        let releasedKeyCodes = activeRoutes.keys.sorted().filter(shouldRelease)
+        for keyCode in releasedKeyCodes {
+            if let activeRoute = activeRoutes.removeValue(forKey: keyCode) {
+                release(activeRoute, eventFlags: [], trackedFlags: trackedFlags, inject: inject)
+            }
+        }
+        return releasedKeyCodes
+    }
+
+    @discardableResult
+    mutating func releaseAll(
+        trackedFlags: CGEventFlags,
+        inject: (InjectedKeyEventPayload) -> Bool
+    ) -> [CGKeyCode] {
+        releaseRoutes(where: { _ in true }, trackedFlags: trackedFlags, inject: inject)
+    }
+
+    mutating func reset() {
+        activeRoutes.removeAll()
+    }
+
+    private mutating func routeNewPress(
+        keyCode: CGKeyCode,
+        eventFlags: CGEventFlags,
+        trackedFlags: CGEventFlags,
+        configuration: KeyboardMappingConfiguration,
+        inject: (InjectedKeyEventPayload) -> Bool
+    ) -> KeyPressDecision {
+        guard configuration.isKeyMappingEnabled,
+              let payload = translator.translate(
+                  eventType: .keyDown,
+                  keyCode: keyCode,
+                  eventFlags: eventFlags,
+                  trackedFlags: trackedFlags,
+                  isAutorepeat: false
+              ),
+              inject(payload) else {
+            return .passThrough
+        }
+
+        activeRoutes[keyCode] = .mapped(payload.targetKeyCode)
+        return .consume
+    }
+
+    private func release(
+        _ route: Route,
+        eventFlags: CGEventFlags,
+        trackedFlags: CGEventFlags,
+        inject: (InjectedKeyEventPayload) -> Bool
+    ) {
+        switch route {
+        case .mapped(let targetKeyCode):
+            _ = inject(Self.payload(
+                targetKeyCode: targetKeyCode,
+                eventFlags: eventFlags,
+                trackedFlags: trackedFlags,
+                isKeyDown: false,
+                isAutorepeat: false
+            ))
+        }
+    }
+
+    private static func payload(
+        targetKeyCode: CGKeyCode,
+        eventFlags: CGEventFlags,
+        trackedFlags: CGEventFlags,
+        isKeyDown: Bool,
+        isAutorepeat: Bool
+    ) -> InjectedKeyEventPayload {
+        InjectedKeyEventPayload(
+            targetKeyCode: targetKeyCode,
+            outputFlags: KeyboardEventTranslator.outputFlags(from: eventFlags, trackedFlags: trackedFlags),
+            isKeyDown: isKeyDown,
+            isAutorepeat: isAutorepeat
+        )
     }
 }
 

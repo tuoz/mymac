@@ -254,6 +254,257 @@ final class KeyboardEventTranslatorTests: XCTestCase {
     }
 }
 
+final class KeyPressRouterTests: XCTestCase {
+    private var router = KeyPressRouter()
+    private var injected: [InjectedKeyEventPayload] = []
+    private var injectionSucceeds = true
+    private var heldFlags: CGEventFlags = []
+    private var configuration = KeyboardMappingConfiguration.allEnabled
+
+    func testFnBackspaceThenJWithFnReleasedFirstEmitsMatchingKeyUps() {
+        for releaseBackspaceFirst in [false, true] {
+            resetState()
+
+            heldFlags = [.maskSecondaryFn]
+            XCTAssertEqual(send(.keyDown, kVK_Delete), .consume)
+            XCTAssertEqual(send(.keyDown, kVK_ANSI_J), .consume)
+            XCTAssertEqual(send(.keyDown, kVK_ANSI_J, isAutorepeat: true), .consume)
+            heldFlags = []
+
+            let releaseOrder = releaseBackspaceFirst ? [kVK_Delete, kVK_ANSI_J] : [kVK_ANSI_J, kVK_Delete]
+            for keyCode in releaseOrder {
+                XCTAssertEqual(send(.keyUp, keyCode), .consume)
+            }
+
+            let releasedTargets = releaseOrder.map { $0 == kVK_Delete ? kVK_ForwardDelete : kVK_DownArrow }
+            XCTAssertEqual(injected, [
+                key(kVK_ForwardDelete, isKeyDown: true),
+                key(kVK_DownArrow, isKeyDown: true),
+                key(kVK_DownArrow, isKeyDown: true, isAutorepeat: true),
+            ] + releasedTargets.map { key($0, isKeyDown: false) })
+            XCTAssertEqual(router.activeRoutes, [:])
+        }
+    }
+
+    func testMapsEveryKeyForAWholePressCycle() {
+        let mappings = [
+            (kVK_Delete, kVK_ForwardDelete),
+            (kVK_ANSI_H, kVK_LeftArrow),
+            (kVK_ANSI_J, kVK_DownArrow),
+            (kVK_ANSI_K, kVK_UpArrow),
+            (kVK_ANSI_L, kVK_RightArrow),
+        ]
+
+        for (keyCode, targetKeyCode) in mappings {
+            resetState()
+            heldFlags = [.maskSecondaryFn]
+
+            send(.keyDown, keyCode)
+            send(.keyDown, keyCode, isAutorepeat: true)
+            send(.keyUp, keyCode)
+
+            XCTAssertEqual(injected, [
+                key(targetKeyCode, isKeyDown: true),
+                key(targetKeyCode, isKeyDown: true, isAutorepeat: true),
+                key(targetKeyCode, isKeyDown: false),
+            ])
+            XCTAssertEqual(router.activeRoutes, [:])
+        }
+    }
+
+    func testKeepsMappingForAutorepeatAfterFnIsReleased() {
+        heldFlags = [.maskSecondaryFn]
+        send(.keyDown, kVK_Delete)
+        heldFlags = []
+
+        XCTAssertEqual(send(.keyDown, kVK_Delete, isAutorepeat: true), .consume)
+        XCTAssertEqual(send(.keyUp, kVK_Delete), .consume)
+
+        XCTAssertEqual(injected, [
+            key(kVK_ForwardDelete, isKeyDown: true),
+            key(kVK_ForwardDelete, isKeyDown: true, isAutorepeat: true),
+            key(kVK_ForwardDelete, isKeyDown: false),
+        ])
+    }
+
+    func testUnrelatedKeyDuringMappedPressPassesThrough() {
+        heldFlags = [.maskSecondaryFn]
+        send(.keyDown, kVK_Delete)
+
+        XCTAssertEqual(send(.keyDown, kVK_ANSI_F), .passThrough)
+        XCTAssertEqual(send(.keyDown, kVK_ANSI_F, isAutorepeat: true), .passThrough)
+        heldFlags = []
+        XCTAssertEqual(send(.keyUp, kVK_ANSI_F), .passThrough)
+        XCTAssertEqual(send(.keyUp, kVK_Delete), .consume)
+
+        XCTAssertEqual(injected, [
+            key(kVK_ForwardDelete, isKeyDown: true),
+            key(kVK_ForwardDelete, isKeyDown: false),
+        ])
+    }
+
+    func testKeyPressedBeforeFnStaysUnmappedForWholePress() {
+        XCTAssertEqual(send(.keyDown, kVK_Delete), .passThrough)
+        heldFlags = [.maskSecondaryFn]
+        XCTAssertEqual(send(.keyDown, kVK_Delete, isAutorepeat: true), .passThrough)
+        XCTAssertEqual(send(.keyUp, kVK_Delete), .passThrough)
+
+        XCTAssertEqual(injected, [])
+        XCTAssertEqual(router.activeRoutes, [:])
+    }
+
+    func testAutorepeatWithoutInitialKeyDownIsNotMapped() {
+        heldFlags = [.maskSecondaryFn]
+
+        XCTAssertEqual(send(.keyDown, kVK_ANSI_L, isAutorepeat: true), .passThrough)
+        XCTAssertEqual(send(.keyUp, kVK_ANSI_L), .passThrough)
+        XCTAssertEqual(injected, [])
+    }
+
+    func testUsesCurrentModifiersForAutorepeatAndKeyUp() {
+        heldFlags = [.maskSecondaryFn]
+        send(.keyDown, kVK_ANSI_L)
+        heldFlags = [.maskSecondaryFn, .maskShift]
+        send(.keyDown, kVK_ANSI_L, isAutorepeat: true)
+        heldFlags = [.maskControl]
+        send(.keyUp, kVK_ANSI_L)
+
+        XCTAssertEqual(injected, [
+            key(kVK_RightArrow, isKeyDown: true),
+            key(kVK_RightArrow, isKeyDown: true, isAutorepeat: true, flags: [.maskShift]),
+            key(kVK_RightArrow, isKeyDown: false, flags: [.maskControl]),
+        ])
+    }
+
+    func testDisablingMappingMidPressStillReleasesMappedKey() {
+        heldFlags = [.maskSecondaryFn]
+        send(.keyDown, kVK_Delete)
+        configuration.isKeyMappingEnabled = false
+
+        XCTAssertEqual(send(.keyUp, kVK_Delete), .consume)
+        XCTAssertEqual(send(.keyDown, kVK_Delete), .passThrough)
+        XCTAssertEqual(send(.keyUp, kVK_Delete), .passThrough)
+
+        XCTAssertEqual(injected, [
+            key(kVK_ForwardDelete, isKeyDown: true),
+            key(kVK_ForwardDelete, isKeyDown: false),
+        ])
+    }
+
+    func testNewKeyDownClosesStaleRouteBeforeDecidingAgain() {
+        heldFlags = [.maskSecondaryFn]
+        send(.keyDown, kVK_Delete)
+        heldFlags = []
+
+        // The key up was lost; the next real press of the key closes the stale route.
+        XCTAssertEqual(send(.keyDown, kVK_Delete), .passThrough)
+
+        XCTAssertEqual(injected, [
+            key(kVK_ForwardDelete, isKeyDown: true),
+            key(kVK_ForwardDelete, isKeyDown: false),
+        ])
+        XCTAssertEqual(router.activeRoutes, [:])
+    }
+
+    func testFailedInitialInjectionPassesThroughWithoutRoute() {
+        heldFlags = [.maskSecondaryFn]
+        injectionSucceeds = false
+
+        XCTAssertEqual(send(.keyDown, kVK_Delete), .passThrough)
+        XCTAssertEqual(router.activeRoutes, [:])
+        XCTAssertEqual(send(.keyUp, kVK_Delete), .passThrough)
+    }
+
+    func testFailedInjectionMidPressStillConsumesOriginalAndEndsOnKeyUp() {
+        heldFlags = [.maskSecondaryFn]
+        send(.keyDown, kVK_Delete)
+        injectionSucceeds = false
+
+        XCTAssertEqual(send(.keyDown, kVK_Delete, isAutorepeat: true), .consume)
+        XCTAssertEqual(send(.keyUp, kVK_Delete), .consume)
+        XCTAssertEqual(router.activeRoutes, [:])
+    }
+
+    func testReleaseAllEmitsKeyUpsForActiveMappedKeys() {
+        heldFlags = [.maskSecondaryFn]
+        send(.keyDown, kVK_ANSI_J)
+        send(.keyDown, kVK_Delete)
+        injected.removeAll()
+        heldFlags = [.maskShift]
+
+        let released = router.releaseAll(trackedFlags: heldFlags, inject: record)
+
+        XCTAssertEqual(released, [CGKeyCode(kVK_ANSI_J), CGKeyCode(kVK_Delete)])
+        XCTAssertEqual(injected, [
+            key(kVK_DownArrow, isKeyDown: false, flags: [.maskShift]),
+            key(kVK_ForwardDelete, isKeyDown: false, flags: [.maskShift]),
+        ])
+        XCTAssertEqual(router.activeRoutes, [:])
+    }
+
+    func testReleaseRoutesOnlyReleasesSelectedKeys() {
+        heldFlags = [.maskSecondaryFn]
+        send(.keyDown, kVK_ANSI_J)
+        send(.keyDown, kVK_Delete)
+        injected.removeAll()
+
+        let released = router.releaseRoutes(
+            where: { $0 == CGKeyCode(kVK_ANSI_J) },
+            trackedFlags: [],
+            inject: record
+        )
+
+        XCTAssertEqual(released, [CGKeyCode(kVK_ANSI_J)])
+        XCTAssertEqual(injected, [key(kVK_DownArrow, isKeyDown: false)])
+        XCTAssertEqual(router.activeRoutes, [CGKeyCode(kVK_Delete): .mapped(CGKeyCode(kVK_ForwardDelete))])
+    }
+
+    override func setUp() {
+        super.setUp()
+        resetState()
+    }
+
+    private func resetState() {
+        router = KeyPressRouter()
+        injected = []
+        injectionSucceeds = true
+        heldFlags = []
+        configuration = .allEnabled
+    }
+
+    @discardableResult
+    private func send(_ eventType: CGEventType, _ keyCode: Int, isAutorepeat: Bool = false) -> KeyPressDecision {
+        router.route(
+            eventType: eventType,
+            keyCode: CGKeyCode(keyCode),
+            eventFlags: heldFlags,
+            trackedFlags: heldFlags,
+            isAutorepeat: isAutorepeat,
+            configuration: configuration,
+            inject: record
+        )
+    }
+
+    private func record(_ payload: InjectedKeyEventPayload) -> Bool {
+        injected.append(payload)
+        return injectionSucceeds
+    }
+
+    private func key(
+        _ keyCode: Int,
+        isKeyDown: Bool,
+        isAutorepeat: Bool = false,
+        flags: CGEventFlags = []
+    ) -> InjectedKeyEventPayload {
+        InjectedKeyEventPayload(
+            targetKeyCode: CGKeyCode(keyCode),
+            outputFlags: flags,
+            isKeyDown: isKeyDown,
+            isAutorepeat: isAutorepeat
+        )
+    }
+}
+
 final class InputSourceSwitchShortcutTests: XCTestCase {
     func testFnSpaceKeyDownTriggersInputSourceSwitch() {
         let action = InputSourceSwitchShortcut.action(
